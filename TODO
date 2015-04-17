@@ -1,0 +1,8 @@
+* play mode: make "Solve" a toggle button
+* add a way to specify timeout in msec, use it between successive per-frontier cell computations
+* draw currently-verified cell with colors indicating minimal and maximal values obtained via simplex
+* zoom
+* experiment with adding newly discovered constraints on the fly; this increases number of variables and might require too many computations
+* show number of masked/remaining mines in status bar
+* when number of remaining mines is "low", add variables for all remaining cells and add equation for remaining mines
+* when simplex-based solver can't proceed, calculate/display probability of a mine under each uncovered cell
