@@ -43,7 +43,7 @@ public:
 } // namespace i
 
 #define errlog i::log_stream(&std::cerr, false)() << __PRETTY_FUNCTION__ << ' ' << i::strip_path(__FILE__) << '(' <<  __LINE__ << "): ERROR: "
-#define xlog i::log_stream(&std::cerr, false)() << __PRETTY_FUNCTION__ << ' ' << i::strip_path(__FILE__) << '(' <<  __LINE__ << ": "
+#define xlog i::log_stream(&std::cerr, false)() << __PRETTY_FUNCTION__ << ' ' << i::strip_path(__FILE__) << '(' <<  __LINE__ << "): "
 
 #define EX_LOG(V) static_cast<std::ostringstream&>(std::ostringstream() << __PRETTY_FUNCTION__ << ' ' << i::strip_path(__FILE__) << '(' <<  __LINE__ << "): " << V).str()
 #define I_ASSERT(OP, LOG) if ( !(OP) ) { auto s = (LOG); std::cerr << s; throw i::exception(s); }

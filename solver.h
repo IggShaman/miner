@@ -12,9 +12,16 @@ public:
     explicit solver ( board_ptr b ) : board_{b} {}
     ~solver();
     
-    void add_new_uncovered ( coord c ) { frontier_.push_back(c); got_new_uncovered_ = true; }
+    void set_have_new_info() { have_new_info_ = true; }
+    void add_new_uncovered ( coord c ) { frontier_.push_back(c); have_new_info_ = true; }
     std::pair<bool, coord> current_cell();       // returns true if there is a current cell; false means evetything is solved or need input
-    std::pair<bool, coord> solve_current_cell(); // returns cell coords and true if cell was solved; false otherwise
+
+    struct solve_info {
+	bool was_solved{};
+	bool game_was_lost{};
+	coord cell_at;
+    };
+    solve_info solve_current_cell();
     
 private:
     void prepare();
@@ -34,7 +41,7 @@ private:
     vars_map_type vars_; // a set of coords current LP is looking at; maps coord to LP's column variable number
     vars_map_type::iterator var_it_; // used by interface functions
     size_t solved_nr_{}; // how many variables got solved during current run; if run completes and none were solved, we will need more input
-    bool got_new_uncovered_{}; // true if new uncovered cell(s) were added since the last time LP was constructed
+    bool have_new_info_{}; // true if we have new info to work with
 };
 
 } // namespace miner

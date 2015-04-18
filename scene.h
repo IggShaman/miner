@@ -18,9 +18,10 @@ public:
     void set_board ( board_ptr );
     void set_show_mines ( bool v ) { show_mines_ = v; update(); }
     void update_cell ( coord );
-
+    
 signals:
-    void cell_uncovered ( miner::coord );
+    void cell_changed ( miner::coord );
+    void game_lost();
     
 protected:
     void paintEvent ( QPaintEvent* ) override;

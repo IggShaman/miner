@@ -34,6 +34,7 @@ public:
     size_t nearby_mines_nr ( coord ) const;
     size_t rows() const { return rows_; }
     size_t cols() const { return cols_; }
+    size_t mines_nr() const { return mines_nr_; }
     
 private:
     size_t mines_nr_{};

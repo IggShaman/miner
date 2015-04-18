@@ -14,7 +14,8 @@ main_window::main_window() : ui_{new Ui::main_window} {
     scene_ = new scene;
     ui_->scrollArea->setWidget(scene_);
     scene_->show();
-    connect(scene_, SIGNAL(cell_uncovered(miner::coord)), SLOT(cell_uncovered_slot(miner::coord)));
+    connect(scene_, SIGNAL(cell_changed(miner::coord)), SLOT(cell_changed(miner::coord)));
+    connect(scene_, SIGNAL(game_lost()), SLOT(game_lost()));
     
     connect(ui_->action_About, SIGNAL(triggered()), SLOT(action_about()));
     
@@ -31,7 +32,7 @@ main_window::main_window() : ui_{new Ui::main_window} {
     connect(a, SIGNAL(triggered()), SLOT(configure_field()));
     ui_->toolBar->addAction(a);
     
-    a = new QAction("Show &mines", this);
+    show_mines_action_ = a = new QAction("Show &mines", this);
     a->setStatusTip("Show mines");
     a->setCheckable(true);
     connect(a, SIGNAL(toggled(bool)), SLOT(show_mines_toggled(bool)));
@@ -42,6 +43,9 @@ main_window::main_window() : ui_{new Ui::main_window} {
     a->setCheckable(true);
     connect(a, SIGNAL(toggled(bool)), SLOT(run_solver(bool)));
     ui_->toolBar->addAction(a);
+
+    mines_info_label_ = new QLabel();
+    statusBar()->addPermanentWidget(mines_info_label_);
     
     gen_new();
 }
@@ -53,16 +57,20 @@ main_window::~main_window() {
 
 
 void main_window::gen_new() {
+    show_mines_action_->setChecked(false);
+    
     auto f = std::make_shared<field>();
     f->gen_random(new_rows_, new_cols_, new_mines_);
-    auto b = scene_->board();
-    b->reset(f);
-
+    
+    auto b = std::make_shared<board>();
+    b->set_field(f);
+    scene_->set_board(b);
+    
     if ( solver_ )
 	delete solver_;
     solver_ = new solver(b);
     
-    scene_->set_board(b);
+    update_cell_info();
 }
 
 
@@ -89,6 +97,9 @@ void main_window::show_mines_toggled ( bool v ) {
 
 
 void main_window::run_solver ( bool v ) {
+    if ( scene_->board()->game_lost() )
+	return;
+    
     if ( !v )
 	return;
 
@@ -97,16 +108,22 @@ void main_window::run_solver ( bool v ) {
 	auto cv = solver_->current_cell();
 	if ( !cv.first )
 	    break;
-
-	auto sv = solver_->solve_current_cell();
-	if ( sv.first ) {
-	    scene_->update_cell(sv.second);
+	
+	auto si = solver_->solve_current_cell();
+	if ( si.game_was_lost ) {
+	    game_lost();
+	    return;
+	}
+	
+	if ( si.was_solved ) {
+	    scene_->update_cell(si.cell_at);
 	    ++solved_nr;
 	}
     }
-
+    
     run_solver_action_->setChecked(false);
     statusBar()->showMessage(QString("Uncovered %1 cell(s)").arg(solved_nr));
+    update_cell_info();
 }
 
 
@@ -120,8 +137,27 @@ void main_window::action_about() {
 }
 
 
-void main_window::cell_uncovered_slot ( miner::coord c ) {
-    solver_->add_new_uncovered(c);
+void main_window::cell_changed ( miner::coord c ) {
+    if ( scene_->board()->is_ok(c) )
+	solver_->add_new_uncovered(c);
+    else
+	solver_->set_have_new_info();
+    update_cell_info();
+}
+
+
+void main_window::update_cell_info() {
+    mines_info_label_->setText(QString("Mines: %1 / %2 Uncovered: %3 Left: %4")
+			       .arg(scene_->board()->mines_marked())
+			       .arg(scene_->board()->field()->mines_nr())
+			       .arg(scene_->board()->uncovered_nr())
+			       .arg(scene_->board()->left_nr()));
+}
+
+
+void main_window::game_lost() {
+    scene_->board()->set_game_lost();
+    show_mines_action_->setChecked(true);
 }
 
 } // namespace miner

@@ -7,21 +7,13 @@ scene::scene()
     : board_{new miner::board},
       cell_border_{200,200,200},
       cell_opened_bg_{220,220,220},
-      cell_unknown_bg_{100,100,100}
+      cell_unknown_bg_{100,100,100},
+      per_nr_colors_{Qt::black, Qt::darkBlue, Qt::darkGreen, Qt::darkCyan, Qt::darkMagenta, Qt::black, Qt::black, Qt::black}
 {
-    per_nr_colors_[0] = Qt::black;
-    per_nr_colors_[1] = Qt::darkBlue;
-    per_nr_colors_[2] = Qt::darkGreen;
-    per_nr_colors_[3] = Qt::darkCyan;
-    per_nr_colors_[4] = Qt::darkMagenta;
-    per_nr_colors_[5] = Qt::black;
-    per_nr_colors_[6] = Qt::black;
-    per_nr_colors_[7] = Qt::black;
-    
     cell_font_.setPointSize(kCellSize - 4);
     cell_font_.setBold(true);
     
-    board_->reset(std::make_shared<field>());
+    board_->set_field(std::make_shared<field>());
 }
 
 
@@ -95,6 +87,8 @@ void scene::paint_cell ( QPainter& painter, coord c ) {
 
 void scene::mouseReleaseEvent ( QMouseEvent* ev ) {
     ev->accept();
+    if ( board_->game_lost() )
+	return;
     
     coord c{y2row(ev->y()), x2col(ev->x())};
     
@@ -106,10 +100,12 @@ void scene::mouseReleaseEvent ( QMouseEvent* ev ) {
 	
 	if ( board_->field()->is_mine(c) ) {
 	    board_->mark_boom(c);
+	    emit cell_changed(c);
+	    emit game_lost();
 	    
 	} else {
 	    board_->uncovered_safe(c, board_->field()->nearby_mines_nr(c));
-	    emit cell_uncovered(c);
+	    emit cell_changed(c);
 	}
 	
 	update_cell(c);
@@ -121,11 +117,13 @@ void scene::mouseReleaseEvent ( QMouseEvent* ev ) {
 	case board::cellinfo::marked_mine:
 	    board_->mark_mine(c, false);
 	    update_cell(c);
+	    emit cell_changed(c);
 	    break;
 	    
 	case board::cellinfo::unknown:
 	    board_->mark_mine(c, true);
 	    update_cell(c);
+	    emit cell_changed(c);
 	    break;
 	    
 	default:

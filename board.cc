@@ -2,7 +2,7 @@
 
 namespace miner {
 
-void board::reset ( field_ptr f ) {
+void board::set_field ( field_ptr f ) {
     field_ = f;
     data_.resize(field_->rows() * field_->cols());
     std::fill(data_.begin(), data_.end(), cellinfo::unknown);
@@ -11,7 +11,7 @@ void board::reset ( field_ptr f ) {
 
 cell_neighborhood_iterator::cell_neighborhood_iterator ( board* b, coord c )
     : board_{b} {
-
+    
     end_ = 0;
     if ( c.row > 0 ) {
 	if ( c.col > 0 ) neigh_[end_++] = {c.row-1, c.col-1};
@@ -36,7 +36,7 @@ void board::mark_mine ( coord c, bool v ) {
     if ( v ) {
 	if ( ci != cellinfo::unknown )
 	    return;
-
+	
 	ci = cellinfo::marked_mine;
 	++mines_marked_;
 	
