@@ -7,7 +7,7 @@
 
 namespace miner {
 
-main_window::main_window() : ui_{new Ui::main_window} {
+main_window::main_window() : ui_{new Ui::main_window}, solver_timer_(this) {
     ui_->setupUi(this);
     
     ui_->scrollArea->setAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
@@ -55,6 +55,9 @@ main_window::main_window() : ui_{new Ui::main_window} {
     a->setShortcuts({Qt::CTRL + Qt::Key_Plus});
     connect(a, SIGNAL(triggered()), scene_, SLOT(zoom_in()));
     ui_->toolBar->addAction(a);
+    
+    connect(&solver_timer_, SIGNAL(timeout()), SLOT(do_run_solver()));
+    solver_timer_.setSingleShot(true);
     
     mines_info_label_ = new QLabel();
     statusBar()->addPermanentWidget(mines_info_label_);
@@ -109,17 +112,26 @@ void main_window::show_mines_toggled ( bool v ) {
 
 
 void main_window::run_solver ( bool v ) {
+    if ( !v ) {
+	solver_timer_.stop();
+	return;
+    }
+    
+    do_run_solver();
+}
+
+
+void main_window::do_run_solver() {
     if ( scene_->board()->game_lost() )
 	return;
     
-    if ( !v )
-	return;
-
-    size_t solved_nr{};
-    while(true) {
+    for(size_t i = 0; i < 50; ++i) {
 	auto cv = solver_->current_cell();
-	if ( !cv.first )
-	    break;
+	if ( !cv.first ) {
+	    run_solver_action_->setChecked(false);
+	    update_cell_info();
+	    return;
+	}
 	
 	auto si = solver_->solve_current_cell();
 	if ( si.game_was_lost ) {
@@ -127,14 +139,12 @@ void main_window::run_solver ( bool v ) {
 	    return;
 	}
 	
-	if ( si.was_solved ) {
+	if ( si.was_solved )
 	    scene_->update_cell(si.cell_at);
-	    ++solved_nr;
-	}
     }
     
-    run_solver_action_->setChecked(false);
-    statusBar()->showMessage(QString("Uncovered %1 cell(s)").arg(solved_nr));
+    // reschedule
+    solver_timer_.start(0);
     update_cell_info();
 }
 

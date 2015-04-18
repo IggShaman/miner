@@ -45,11 +45,18 @@ void scene::paint_cell ( QPainter& painter, coord c ) {
     painter.translate(col2x(c.col), row2y(c.row));
     painter.scale(scale_, scale_);
     
-    painter.setPen(cell_border_);
-    painter.drawLine(0, 0, kCellSize - 1, 0);
-    painter.drawLine(0, 0, 0, kCellSize - 1);
+    QRect r;
+    if ( scale_ >= 0.5 ) {
+	painter.setPen(cell_border_);
+	painter.drawLine(0, 0, kCellSize - 1, 0);
+	painter.drawLine(0, 0, 0, kCellSize - 1);
+	r = {1,1,kCellSize-1,kCellSize-1};
+	
+    } else {
+	r = {0,0,kCellSize,kCellSize};
+    }
+    
     painter.setFont(cell_font_);
-    QRect r{1,1,kCellSize-1,kCellSize-1};
     
     auto ci = board_->at(c);
     switch(ci) {

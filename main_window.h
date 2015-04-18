@@ -22,6 +22,7 @@ private slots:
     void configure_field();
     void show_mines_toggled ( bool );
     void run_solver ( bool );
+    void do_run_solver();
     void cell_changed ( miner::coord );
     void game_lost();
     
@@ -35,10 +36,11 @@ private:
     size_t new_rows_{3};
     size_t new_cols_{3};
     size_t new_mines_{2};
-
+    
     QAction* run_solver_action_{};
     QAction* show_mines_action_{};
     QLabel* mines_info_label_;
+    QTimer solver_timer_;
 };
 
 } // namespace miner

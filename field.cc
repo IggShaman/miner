@@ -32,6 +32,9 @@ void field::gen_random ( size_t rows, size_t cols, size_t mines_nr ) {
     srand48(time(nullptr));
     reset(rows, cols);
     
+    if ( mines_nr >= rows * cols ) // no error message here, sorry
+	return;
+    
     mines_nr_ = mines_nr;
     while(mines_nr) {
 	coord c{size_t(drand48() * rows_), size_t(drand48() * cols_)};
