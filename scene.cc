@@ -1,5 +1,4 @@
 #include "board.h"
-#include "solver.h"
 #include "scene.h"
 
 namespace miner {
@@ -29,18 +28,15 @@ scene::scene()
 void scene::set_board ( board_ptr b ) {
     board_ = b;
     setFixedSize(board_->rows() * kCellSize, board_->cols() * kCellSize);
-    solver_.reset(new miner::solver(b));
     update();
 }
 
 
 void scene::paintEvent ( QPaintEvent* ev ) {
     QPainter painter(this);
-    for ( size_t row = y2row(ev->rect().top()); row <= y2row(ev->rect().bottom()); ++row ) {
-	for ( size_t col = x2col(ev->rect().left()); col <= x2col(ev->rect().right()); ++col ) {
+    for ( size_t row = y2row(ev->rect().top()); row <= y2row(ev->rect().bottom()); ++row )
+	for ( size_t col = x2col(ev->rect().left()); col <= x2col(ev->rect().right()); ++col )
 	    paint_cell(painter, {row, col});
-	}
-    }
 }
 
 
@@ -55,7 +51,6 @@ void scene::paint_cell ( QPainter& painter, coord c ) {
     painter.setFont(cell_font_);
     QRect r{1,1,kCellSize-1,kCellSize-1};
     
-    //xlog << "rxc=" << row << 'x' << col << " => " << static_cast<int>(board_->at(row, col)) << "\n";
     auto ci = board_->at(c);
     switch(ci) {
     case board::cellinfo::boom_mine:
@@ -82,8 +77,6 @@ void scene::paint_cell ( QPainter& painter, coord c ) {
     case board::cellinfo::n7:
     case board::cellinfo::n8:
 	painter.fillRect(r, cell_opened_bg_);
-	//auto& c = per_nr_colors_[static_cast<int>(v)];
-	//xlog << "painting with " << c.red() << ' ' << c.green() << ' ' << c.blue() << "\n";
 	painter.setPen(per_nr_colors_[static_cast<int>(ci)]);
 	painter.drawText(1, kCellSize - 1, QString::number(static_cast<int>(ci)));
 	break;
@@ -112,10 +105,11 @@ void scene::mouseReleaseEvent ( QMouseEvent* ev ) {
 	    return;
 	
 	if ( board_->field()->is_mine(c) ) {
-	    board_->at(c) = board::cellinfo::boom_mine;
+	    board_->mark_boom(c);
+	    
 	} else {
-	    board_->at(c) = static_cast<board::cellinfo>(board_->field()->nearby_mines_nr(c));
-	    solver_->add_uncovered_cell(c);
+	    board_->uncovered_safe(c, board_->field()->nearby_mines_nr(c));
+	    emit cell_uncovered(c);
 	}
 	
 	update_cell(c);
@@ -123,15 +117,14 @@ void scene::mouseReleaseEvent ( QMouseEvent* ev ) {
     }
 	
     case Qt::RightButton: {
-	auto& v = board_->at(c);
-	switch(v) {
+	switch(board_->at(c)) {
 	case board::cellinfo::marked_mine:
-	    v = board::cellinfo::unknown;
+	    board_->mark_mine(c, false);
 	    update_cell(c);
 	    break;
 	    
 	case board::cellinfo::unknown:
-	    v = board::cellinfo::marked_mine;
+	    board_->mark_mine(c, true);
 	    update_cell(c);
 	    break;
 	    

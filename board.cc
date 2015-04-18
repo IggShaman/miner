@@ -29,4 +29,24 @@ cell_neighborhood_iterator::cell_neighborhood_iterator ( board* b, coord c )
     }
 }
 
+
+void board::mark_mine ( coord c, bool v ) {
+    auto& ci = edit_at(c);
+    
+    if ( v ) {
+	if ( ci != cellinfo::unknown )
+	    return;
+
+	ci = cellinfo::marked_mine;
+	++mines_marked_;
+	
+    } else {
+	if ( ci != cellinfo::marked_mine )
+	    return;
+	
+	ci = cellinfo::unknown;
+	--mines_marked_;
+    }
+}
+
 } // namespace miner

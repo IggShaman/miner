@@ -7,9 +7,6 @@ namespace miner {
 
 class board;
 using board_ptr = std::shared_ptr<board>;
-class solver;
-using solver_ptr = std::shared_ptr<solver>;
-
 
 class scene : public QWidget {
     Q_OBJECT;
@@ -18,9 +15,12 @@ public:
     
     scene();
     board_ptr board() { return board_; }
-    solver_ptr solver() { return solver_; }
     void set_board ( board_ptr );
     void set_show_mines ( bool v ) { show_mines_ = v; update(); }
+    void update_cell ( coord );
+
+signals:
+    void cell_uncovered ( miner::coord );
     
 protected:
     void paintEvent ( QPaintEvent* ) override;
@@ -28,15 +28,12 @@ protected:
     
 private:
     void paint_cell ( QPainter&, coord );
-    void update_cell ( coord );
     size_t x2col ( size_t x ) { return x / kCellSize; }
     size_t y2row ( size_t y ) { return y / kCellSize; }
     size_t row2y ( size_t row ) { return row * kCellSize; }
     size_t col2x ( size_t col ) { return col * kCellSize; }
     
     board_ptr board_;
-    solver_ptr solver_;
-    
     bool show_mines_{};
     
     QColor cell_border_;

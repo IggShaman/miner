@@ -25,15 +25,23 @@ public:
     };
     
     void reset ( field_ptr );
-    cellinfo& at ( coord c ) { return data_[field_->rows() * c.row + c.col]; }
+    cellinfo at ( coord c ) { return data_[field_->rows() * c.row + c.col]; }
+    void mark_mine ( coord, bool );
+    void mark_boom ( coord c ) { edit_at(c) = cellinfo::boom_mine; }
+    void uncovered_safe ( coord c, uint8_t v ) { edit_at(c) = static_cast<cellinfo>(v); }
     size_t rows() const { return field_->rows(); }
     size_t cols() const { return field_->cols(); }
+    size_t mines_marked() const { return mines_marked_; }
     field_ptr field() const { return field_; }
     cell_neighborhood_iterator neighborhood ( coord );
     
 private:
+    cellinfo& edit_at ( coord c ) { return data_[field_->rows() * c.row + c.col]; }
+    
     field_ptr field_;
     std::vector<cellinfo> data_;
+
+    size_t mines_marked_{};
 };
 
 using board_ptr = std::shared_ptr<board>;
@@ -44,7 +52,7 @@ public:
     
     cell_neighborhood_iterator& operator++() { ++i_; return *this; }
     operator bool() const { return i_ < end_; }
-    board::cellinfo& at() { return board_->at(neigh_[i_]); }
+    board::cellinfo at() { return board_->at(neigh_[i_]); }
     const coord& operator*() const { return neigh_[i_]; }
     
 private:

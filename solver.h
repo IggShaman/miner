@@ -9,20 +9,15 @@ namespace miner {
 
 class solver {
 public:
-    enum class cellinfo : int8_t {
-	has_bomb,
-	clear,
-	undecided,
-    };
-    
-    explicit solver ( board_ptr );
+    explicit solver ( board_ptr b ) : board_{b} {}
     ~solver();
     
-    void add_uncovered_cell ( coord );
-    void build_problem();
-    cellinfo check_cell ( coord );
+    void add_new_uncovered ( coord c ) { frontier_.push_back(c); got_new_uncovered_ = true; }
+    std::pair<bool, coord> current_cell();       // returns true if there is a current cell; false means evetything is solved or need input
+    std::pair<bool, coord> solve_current_cell(); // returns cell coords and true if cell was solved; false otherwise
     
 private:
+    void prepare();
     struct unknown_neighbors {
 	uint8_t nr{}; // number of neighbors, in "coords" array
 	uint8_t mines_nr{}; // number of mines left
@@ -31,12 +26,16 @@ private:
     unknown_neighbors get_unknowns ( coord );
     
     board_ptr board_;
-    std::vector<coord> frontier_; // list of frontier cells - the ones which are open and supposedly have unopened neighbors
-    //std::unordered_map<coord, size_t> outer_; // maps (row,col) => LP's column variable number
+    std::vector<coord> frontier_; // list of new frontier cells - the ones which are open and supposedly have unopened neighbors
+    
+    // current instance of LP solver
     lp::problem* lp_{};
+    using vars_map_type = std::unordered_map<coord, size_t>;
+    vars_map_type vars_; // a set of coords current LP is looking at; maps coord to LP's column variable number
+    vars_map_type::iterator var_it_; // used by interface functions
+    size_t solved_nr_{}; // how many variables got solved during current run; if run completes and none were solved, we will need more input
+    bool got_new_uncovered_{}; // true if new uncovered cell(s) were added since the last time LP was constructed
 };
-
-using solver_ptr = std::shared_ptr<solver>;
 
 } // namespace miner
 

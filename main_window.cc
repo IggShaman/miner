@@ -14,7 +14,8 @@ main_window::main_window() : ui_{new Ui::main_window} {
     scene_ = new scene;
     ui_->scrollArea->setWidget(scene_);
     scene_->show();
-
+    connect(scene_, SIGNAL(cell_uncovered(miner::coord)), SLOT(cell_uncovered_slot(miner::coord)));
+    
     connect(ui_->action_About, SIGNAL(triggered()), SLOT(action_about()));
     
     //QIcon(":/images/xxx.png")
@@ -36,9 +37,10 @@ main_window::main_window() : ui_{new Ui::main_window} {
     connect(a, SIGNAL(toggled(bool)), SLOT(show_mines_toggled(bool)));
     ui_->toolBar->addAction(a);
     
-    a = new QAction("&Run solver", this);
-    a->setStatusTip("&Run solver");
-    connect(a, SIGNAL(triggered()), SLOT(build_solver_lp()));
+    run_solver_action_ = a = new QAction("&Solve", this);
+    a->setStatusTip("Solve");
+    a->setCheckable(true);
+    connect(a, SIGNAL(toggled(bool)), SLOT(run_solver(bool)));
     ui_->toolBar->addAction(a);
     
     gen_new();
@@ -55,6 +57,10 @@ void main_window::gen_new() {
     f->gen_random(new_rows_, new_cols_, new_mines_);
     auto b = scene_->board();
     b->reset(f);
+
+    if ( solver_ )
+	delete solver_;
+    solver_ = new solver(b);
     
     scene_->set_board(b);
 }
@@ -82,9 +88,25 @@ void main_window::show_mines_toggled ( bool v ) {
 }
 
 
-void main_window::build_solver_lp() {
-    scene_->solver()->build_problem();
-    scene_->update();
+void main_window::run_solver ( bool v ) {
+    if ( !v )
+	return;
+
+    size_t solved_nr{};
+    while(true) {
+	auto cv = solver_->current_cell();
+	if ( !cv.first )
+	    break;
+
+	auto sv = solver_->solve_current_cell();
+	if ( sv.first ) {
+	    scene_->update_cell(sv.second);
+	    ++solved_nr;
+	}
+    }
+
+    run_solver_action_->setChecked(false);
+    statusBar()->showMessage(QString("Uncovered %1 cell(s)").arg(solved_nr));
 }
 
 
@@ -95,6 +117,11 @@ void main_window::action_about() {
 		       "This program comes with ABSOLUTELY NO WARRANTY.\n"
 		       "This is free software, and you are welcome to redistribute it\n"
 		       "under certain conditions. Look here for GPL3 license: http://www.gnu.org/licenses/");
+}
+
+
+void main_window::cell_uncovered_slot ( miner::coord c ) {
+    solver_->add_new_uncovered(c);
 }
 
 } // namespace miner
