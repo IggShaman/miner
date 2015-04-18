@@ -42,4 +42,26 @@ void field::gen_random ( size_t rows, size_t cols, size_t mines_nr ) {
     }
 }
 
+
+size_t field::nearby_mines_nr ( coord c ) const {
+    size_t rv{};
+    
+    if ( c.row > 0 ) {
+	if ( c.col > 0 ) rv += is_mine({c.row-1, c.col-1});
+	rv += is_mine({c.row-1, c.col});
+	if ( c.col < cols_ - 1 ) rv += is_mine({c.row-1, c.col+1});
+    }
+    
+    if ( c.col > 0 ) rv += is_mine({c.row, c.col-1});
+    if ( c.col < cols_ - 1 ) rv += is_mine({c.row, c.col+1});
+    
+    if ( c.row < rows_ - 1 ) {
+	if ( c.col > 0 ) rv += is_mine({c.row+1, c.col-1});
+	rv += is_mine({c.row+1, c.col});
+	if ( c.col < cols_ - 1 ) rv += is_mine({c.row+1, c.col+1});
+    }
+    
+    return rv;
+}
+
 } // namespace miner

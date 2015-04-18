@@ -16,11 +16,19 @@ struct coord {
 } // namespace miner
 
 namespace std {
-template<> struct hash<miner::coord> { std::size_t operator() ( const miner::coord& c ) const { return qHash(c.col, qHash(c.row, 0)); } };
+
+template<>
+struct hash<miner::coord> {
+    std::size_t operator() ( const miner::coord& c ) const {
+	return qHash(c.col, qHash(c.row, 0));
+    }
+};
+
 inline ostream& operator<< ( ostream& os, const miner::coord& c ) {
     os << '(' << c.row << ' ' << c.col << ')';
     return os;
 }
+
 } // namespace std
 
 namespace miner {
@@ -44,28 +52,6 @@ private:
 };
 
 using field_ptr = std::shared_ptr<field>;
-
-
-inline size_t field::nearby_mines_nr ( coord c ) const {
-    size_t rv{};
-    
-    if ( c.row > 0 ) {
-	if ( c.col > 0 ) rv += is_mine({c.row-1, c.col-1});
-	rv += is_mine({c.row-1, c.col});
-	if ( c.col < cols_ - 1 ) rv += is_mine({c.row-1, c.col+1});
-    }
-    
-    if ( c.col > 0 ) rv += is_mine({c.row, c.col-1});
-    if ( c.col < cols_ - 1 ) rv += is_mine({c.row, c.col+1});
-
-    if ( c.row < rows_ - 1 ) {
-	if ( c.col > 0 ) rv += is_mine({c.row+1, c.col-1});
-	rv += is_mine({c.row+1, c.col});
-	if ( c.col < cols_ - 1 ) rv += is_mine({c.row+1, c.col+1});
-    }
-    
-    return rv;
-}
 
 } // namespace mine
 

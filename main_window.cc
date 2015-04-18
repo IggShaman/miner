@@ -44,6 +44,18 @@ main_window::main_window() : ui_{new Ui::main_window} {
     connect(a, SIGNAL(toggled(bool)), SLOT(run_solver(bool)));
     ui_->toolBar->addAction(a);
 
+    a = new QAction("-", this);
+    a->setStatusTip("Zoom out");
+    a->setShortcuts({Qt::CTRL + Qt::Key_Minus});
+    connect(a, SIGNAL(triggered()), scene_, SLOT(zoom_out()));
+    ui_->toolBar->addAction(a);
+    
+    a = new QAction("+", this);
+    a->setStatusTip("Zoom in");
+    a->setShortcuts({Qt::CTRL + Qt::Key_Plus});
+    connect(a, SIGNAL(triggered()), scene_, SLOT(zoom_in()));
+    ui_->toolBar->addAction(a);
+    
     mines_info_label_ = new QLabel();
     statusBar()->addPermanentWidget(mines_info_label_);
     

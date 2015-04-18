@@ -20,6 +20,13 @@ scene::scene()
 void scene::set_board ( board_ptr b ) {
     board_ = b;
     setFixedSize(board_->rows() * kCellSize, board_->cols() * kCellSize);
+    set_scale(scale_);
+}
+
+
+void scene::set_scale ( float s ) {
+    scale_ = s;
+    setFixedSize(board_->rows() * kCellSize * scale_, board_->cols() * kCellSize * scale_);
     update();
 }
 
@@ -36,6 +43,7 @@ void scene::paint_cell ( QPainter& painter, coord c ) {
     painter.save();
     
     painter.translate(col2x(c.col), row2y(c.row));
+    painter.scale(scale_, scale_);
     
     painter.setPen(cell_border_);
     painter.drawLine(0, 0, kCellSize - 1, 0);
@@ -139,7 +147,39 @@ void scene::mouseReleaseEvent ( QMouseEvent* ev ) {
 
 
 void scene::update_cell ( coord c ) {
-    update(col2x(c.col), row2y(c.row), kCellSize, kCellSize);
+    update(col2x(c.col), row2y(c.row), kCellSize * scale_, kCellSize * scale_);
+}
+
+
+void scene::wheelEvent ( QWheelEvent* ev ) {
+    if ( ev->modifiers() & Qt::ControlModifier ) {
+	ev->accept();
+
+	auto steps = ev->angleDelta() / 8 / 15;
+	if ( steps.isNull() )
+	    return;
+	
+	scale_ += 0.05 * steps.y();
+	if ( scale_ < 0.05 )
+	    scale_ = 0.05;
+	else if ( scale_ > 1 )
+	    scale_ = 1;
+	
+	set_scale(scale_);
+	return;
+    }
+}
+
+
+void scene::zoom_out() {
+    if ( scale_ > 0.05 )
+	set_scale(std::max({0.05, scale_ - 0.05}));
+}
+
+
+void scene::zoom_in() {
+    if ( scale_ < 1 )
+	set_scale(std::min({scale_ + 0.05, 1.0}));
 }
 
 } // namespace miner
