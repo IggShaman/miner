@@ -33,8 +33,8 @@ void scene::set_scale ( float s ) {
 
 void scene::paintEvent ( QPaintEvent* ev ) {
     QPainter painter(this);
-    for ( size_t row = y2row(ev->rect().top()); row <= y2row(ev->rect().bottom()); ++row )
-	for ( size_t col = x2col(ev->rect().left()); col <= x2col(ev->rect().right()); ++col )
+    for ( int row = y2row(ev->rect().top()); row <= y2row(ev->rect().bottom()); ++row )
+	for ( int col = x2col(ev->rect().left()); col <= x2col(ev->rect().right()); ++col )
 	    paint_cell(painter, {row, col});
 }
 
@@ -101,8 +101,7 @@ void scene::paint_cell ( QPainter& painter, coord c ) {
 
 
 void scene::mouseReleaseEvent ( QMouseEvent* ev ) {
-    ev->accept();
-    if ( board_->game_lost() )
+    if ( !rw_  or board_->game_lost() )
 	return;
     
     coord c{y2row(ev->y()), x2col(ev->x())};
@@ -113,6 +112,7 @@ void scene::mouseReleaseEvent ( QMouseEvent* ev ) {
 	if ( board_->at(c) != board::cellinfo::unknown )
 	    return;
 	
+	ev->accept();
 	if ( board_->field()->is_mine(c) ) {
 	    board_->mark_boom(c);
 	    emit cell_changed(c);
@@ -128,6 +128,7 @@ void scene::mouseReleaseEvent ( QMouseEvent* ev ) {
     }
 	
     case Qt::RightButton: {
+	ev->accept();
 	switch(board_->at(c)) {
 	case board::cellinfo::marked_mine:
 	    board_->mark_mine(c, false);

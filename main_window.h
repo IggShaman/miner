@@ -2,13 +2,13 @@
 #define __MINER_MW_H_
 
 #include "field.h"
+#include "solver.h"
 
 namespace Ui { class main_window; }
 
 namespace miner {
 
 class scene;
-class solver;
 
 class main_window : public QMainWindow {
     Q_OBJECT;
@@ -22,9 +22,9 @@ private slots:
     void configure_field();
     void show_mines_toggled ( bool );
     void run_solver ( bool );
-    void do_run_solver();
     void cell_changed ( miner::coord );
     void game_lost();
+    void solver_result_slot ( miner::solver::feedback, miner::coord );
     
 private:
     void update_cell_info();
@@ -40,7 +40,6 @@ private:
     QAction* run_solver_action_{};
     QAction* show_mines_action_{};
     QLabel* mines_info_label_;
-    QTimer solver_timer_;
 };
 
 } // namespace miner

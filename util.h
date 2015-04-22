@@ -47,6 +47,7 @@ public:
 
 #define EX_LOG(V) static_cast<std::ostringstream&>(std::ostringstream() << __PRETTY_FUNCTION__ << ' ' << i::strip_path(__FILE__) << '(' <<  __LINE__ << "): " << V).str()
 #define I_ASSERT(OP, LOG) if ( !(OP) ) { auto s = (LOG); std::cerr << s; throw i::exception(s); }
+#define I_FAIL(LOG) { auto s = EX_LOG(LOG); std::cerr << s; throw i::exception(s); }
 
 inline void DIE() {
     *((char*)nullptr) = 0;

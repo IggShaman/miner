@@ -7,7 +7,7 @@
 
 namespace miner {
 
-main_window::main_window() : ui_{new Ui::main_window}, solver_timer_(this) {
+main_window::main_window() : ui_{new Ui::main_window} {
     ui_->setupUi(this);
     
     ui_->scrollArea->setAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
@@ -56,9 +56,6 @@ main_window::main_window() : ui_{new Ui::main_window}, solver_timer_(this) {
     connect(a, SIGNAL(triggered()), scene_, SLOT(zoom_in()));
     ui_->toolBar->addAction(a);
     
-    connect(&solver_timer_, SIGNAL(timeout()), SLOT(do_run_solver()));
-    solver_timer_.setSingleShot(true);
-    
     mines_info_label_ = new QLabel();
     statusBar()->addPermanentWidget(mines_info_label_);
     
@@ -84,8 +81,16 @@ void main_window::gen_new() {
     if ( solver_ )
 	delete solver_;
     solver_ = new solver(b);
+    solver_->set_result_handler([this](auto ft, miner::coord c){
+	    QMetaObject::invokeMethod(this, "solver_result_slot", Qt::QueuedConnection,
+				      Q_ARG(miner::solver::feedback, ft),
+				      Q_ARG(miner::coord, c));
+	});
+    solver_->start_async();
     
     update_cell_info();
+    
+    scene_->set_rw(true);
 }
 
 
@@ -112,40 +117,16 @@ void main_window::show_mines_toggled ( bool v ) {
 
 
 void main_window::run_solver ( bool v ) {
-    if ( !v ) {
-	solver_timer_.stop();
-	return;
-    }
-    
-    do_run_solver();
-}
-
-
-void main_window::do_run_solver() {
     if ( scene_->board()->game_lost() )
 	return;
     
-    for(size_t i = 0; i < 50; ++i) {
-	auto cv = solver_->current_cell();
-	if ( !cv.first ) {
-	    run_solver_action_->setChecked(false);
-	    update_cell_info();
-	    return;
-	}
-	
-	auto si = solver_->solve_current_cell();
-	if ( si.game_was_lost ) {
-	    game_lost();
-	    return;
-	}
-	
-	if ( si.was_solved )
-	    scene_->update_cell(si.cell_at);
+    if ( v ) {
+	scene_->set_rw(false);
+	solver_->resume();
+
+    } else {
+	solver_->suspend();
     }
-    
-    // reschedule
-    solver_timer_.start(0);
-    update_cell_info();
 }
 
 
@@ -160,10 +141,7 @@ void main_window::action_about() {
 
 
 void main_window::cell_changed ( miner::coord c ) {
-    if ( scene_->board()->is_ok(c) )
-	solver_->add_new_uncovered(c);
-    else
-	solver_->set_have_new_info();
+    solver_->add_poi(c);
     update_cell_info();
 }
 
@@ -180,6 +158,26 @@ void main_window::update_cell_info() {
 void main_window::game_lost() {
     scene_->board()->set_game_lost();
     show_mines_action_->setChecked(true);
+}
+
+
+void main_window::solver_result_slot ( solver::feedback ft, miner::coord c ) {
+    switch(ft) {
+    case solver::feedback::kSolved:
+	scene_->update_cell(c);
+	update_cell_info();
+	break;
+	
+    case solver::feedback::kSuspended:
+	scene_->set_rw(true);
+	run_solver_action_->setChecked(false);
+	break;
+	
+    case solver::feedback::kGameLost:
+	run_solver_action_->setChecked(false);
+	game_lost();
+	break;
+    };
 }
 
 } // namespace miner

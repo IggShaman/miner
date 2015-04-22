@@ -5,10 +5,10 @@ namespace miner {
 
 struct coord {
     coord() : row{}, col{} {}
-    coord ( size_t _row, size_t _col ) : row{_row}, col{_col} {}
+    coord ( int _row, int _col ) : row{_row}, col{_col} {}
     
-    size_t row{};
-    size_t col{};
+    int row{};
+    int col{};
     
     bool operator== ( const coord& other ) const { return row == other.row and col == other.col; }
 };
@@ -35,23 +35,24 @@ namespace miner {
 
 class field {
 public:
-    void gen_random ( size_t rows, size_t cols, size_t mines_nr );
-    void reset ( size_t rows, size_t cols );
+    void gen_random ( int rows, int cols, int mines_nr );
+    void reset ( int rows, int cols );
     void set_mine ( coord, bool v ); // for manual minefield control; maintains mines_nr
     bool is_mine ( coord c ) const { return data_[c.row * cols_ + c.col]; }
-    size_t nearby_mines_nr ( coord ) const;
-    size_t rows() const { return rows_; }
-    size_t cols() const { return cols_; }
-    size_t mines_nr() const { return mines_nr_; }
+    int nearby_mines_nr ( coord ) const;
+    int rows() const { return rows_; }
+    int cols() const { return cols_; }
+    int mines_nr() const { return mines_nr_; }
     
 private:
-    size_t mines_nr_{};
-    size_t rows_{};
-    size_t cols_{};
+    int mines_nr_{};
+    int rows_{};
+    int cols_{};
     std::vector<bool> data_;
 };
 
 using field_ptr = std::shared_ptr<field>;
+using field_cptr = std::shared_ptr<const field>;
 
 } // namespace mine
 

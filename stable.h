@@ -9,6 +9,11 @@
 #include <sstream>
 #include <vector>
 #include <unordered_map>
+#include <deque>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
 
 #include <QtCore>
 #include <QtWidgets>

@@ -19,6 +19,8 @@
 
 int main ( int argc, char** argv ) {
     QApplication q(argc, argv);
+    qRegisterMetaType<miner::solver::feedback>("miner::solver::feedback");
+    qRegisterMetaType<miner::coord>("miner::coord");
     miner::main_window mw;
     mw.show();
     return q.exec();

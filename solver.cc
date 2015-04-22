@@ -4,12 +4,74 @@
 namespace miner {
 
 solver::~solver() {
-    if ( lp_ )
-	delete lp_;
+    stop();
+    thread_.join();
 }
 
 
-solver::unknown_neighbors solver::get_unknowns ( coord c ) {
+void solver::start_async() {
+    I_ASSERT(state_ == state::kNew, EX_LOG("state==" << static_cast<int>(state_.load()) << " != kNew"));
+    I_ASSERT(!thread_.joinable(), EX_LOG("thread is joinable"));
+    
+    state_ = state::kSuspended;
+    thread_ = std::thread(&solver::async_solver, this);
+}
+
+
+bool solver::ok_to_run() {
+    while(true) {
+	switch(state_) {
+	case state::kNew:
+	case state::kSuspended: {
+	    std::unique_lock<std::mutex> lck(mtx_);
+	    cond_.wait(lck);
+	    break;
+	}
+	    
+	case state::kSuspending:
+	    state_ = state::kSuspended;
+	    break;
+	    
+	case state::kRunning:
+	    return true;
+	    
+	case state::kExit:
+	    return false;
+	};
+    }
+}
+
+
+void solver::suspend() {
+    I_ASSERT(state_ != state::kExit, EX_LOG("state == kExit"));
+    std::lock_guard<std::mutex> lck(mtx_);
+    state_ = state::kSuspending;
+    cond_.notify_one();
+}
+
+
+void solver::resume() {
+    I_ASSERT(state_ != state::kExit, EX_LOG("state == kExit"));
+    std::lock_guard<std::mutex> lck(mtx_);
+    state_ = state::kRunning;
+    cond_.notify_one();
+}
+
+
+void solver::stop() {
+    std::lock_guard<std::mutex> lck(mtx_);
+    state_ = state::kExit;
+    cond_.notify_one();
+}
+
+
+void solver::add_poi ( coord c ) {
+    I_ASSERT(!is_running(), EX_LOG("tried to add POI while solver is running"));
+    poi_.push_back(c);
+}
+
+
+solver::unknown_neighbors solver::get_unknowns ( coord c ) const {
     unknown_neighbors rv;
     
     auto ci = board_->at(c);
@@ -17,7 +79,7 @@ solver::unknown_neighbors solver::get_unknowns ( coord c ) {
     case board::cellinfo::boom_mine:
     case board::cellinfo::marked_mine:
     case board::cellinfo::unknown:
-	EX_LOG("internal error: cell (" << c.row << ' ' << c.col << ") is of type " << static_cast<int>(ci) << ": not a free open one");
+	I_FAIL("internal error: cell (" << c.row << ' ' << c.col << ") is of type " << static_cast<int>(ci) << ": not a free open one");
 	break;
 	
     case board::cellinfo::n0:
@@ -65,55 +127,106 @@ struct lp_row_info {
 };
 
 
-void solver::prepare() {
-    if ( lp_ )
-	delete lp_;
-    lp_ = new lp::problem();
-    solved_nr_ = 0;
-    have_new_info_ = false;
+void solver::async_solver() {
+    while(ok_to_run()) {
+	if ( poi_.empty() ) {
+	    state_ = state::kSuspended;
+	    result_handler_(feedback::kSuspended, {});
+	    continue;
+	}
+	
+	if ( !do_poi(poi_.front()) ) {
+	    poi_.pop_front();
+	    state_ = state::kExit;
+	    return;
+	}
+	
+	poi_.pop_front();
+    }
+}
+
+
+bool solver::do_poi ( miner::coord poi ) {
+    auto poi_u = get_unknowns(poi);
+    if ( !poi_u.nr )
+	return true;
     
+    std::unique_ptr<lp::problem> lp(new lp::problem);
+    vars_map_type vars; // a set of coords current LP is looking at; maps coord to LP's column variable number
+    prepare(lp.get(), poi, vars);
+    if ( vars.empty() )
+	return true;
+    
+    for(auto& v: vars) {
+	lp->set_objective_coefficient(v.second, 1);
+	lp->set_maximize();
+	lp->solve();
+	
+	if ( lp->get_objective_value() == 0 ) {
+	    // can't have a mine here
+	    if ( board_->field()->is_mine(v.first) ) {
+		result_handler_(feedback::kGameLost, {});
+		return false;
+	    }
+	    
+	    board_->uncovered_safe(v.first, board_->field()->nearby_mines_nr(v.first));
+	    poi_.push_back(v.first);
+	    result_handler_(feedback::kSolved, v.first);
+	    
+	} else {
+	    lp->set_minimize();
+	    lp->solve();
+	    if ( lp->get_objective_value() > 0 ) { // must have a mine here
+		board_->mark_mine(v.first, true);
+		result_handler_(feedback::kSolved, v.first);
+	    }
+	}
+	
+	lp->set_objective_coefficient(v.second, 0);
+    }
+    
+    return true;
+}
+
+
+void solver::prepare ( lp::problem* lp, coord poi, vars_map_type& vars ) {
     std::ostringstream oss;
     
-    size_t vars_nr{};
-    vars_.clear();
+    int vars_nr{};
+    
+    //
+    // setup initial LP
+    //
     std::vector<lp_row_info> rows; // used to set row names and constraints
     lp::matrix m;
     
-    decltype(frontier_) old_frontier;
-    std::swap(frontier_, old_frontier);
-    
-    //xlog << "frontier size: " << old_frontier.size() << "\n";
-    
-    for(auto c: old_frontier) {
-	//xlog << "looing at frontier " << c << "\n";
-	auto u = get_unknowns(c);
-	//xlog << "has " << (int)u.nr << " unknown neighbors, " << (int)u.mines_nr << " mine(s)\n";
-	
-	if ( !u.nr ) // no longer a frontier
-	    continue;
-	
-	//for(uint8_t i = 0; i < u.nr; ++i) {
-	//xlog << "  at " << u.coords[i] << "\n";
-	//}
-	
-	frontier_.push_back(c); // this is an old frontier, don't set "have_new_info_" to true
-	
-	oss.str("");
-	oss << 'n' << c;
-	rows.push_back({u.mines_nr, oss.str()});
-	
-	for(uint8_t i = 0; i < u.nr; ++i) {
-	    // find/add column variable for an uncovered cell
-	    auto iv = vars_.insert({u.coords[i], vars_nr + 1});
-	    if ( iv.second )
-		++vars_nr;
+    for(int row = std::max(0, poi.row - kRange); row <= std::min(board_->rows() - 1, static_cast<int>(poi.row) + kRange); ++row) {
+	for(int col = std::max(0, static_cast<int>(poi.col) - kRange); col <= std::min(static_cast<int>(board_->cols()) - 1, static_cast<int>(poi.col) + kRange); ++col) {
+	    coord c{row, col};
+	    auto ci = board_->at(c);
+	    if ( static_cast<int>(ci) < 0 )
+		continue;
 	    
-	    // set coefficient to 1
-	    m.add(rows.size(), iv.first->second, 1);
+	    auto u = get_unknowns(c);
+	    if ( !u.nr )
+		continue;
+	    
+	    oss.str("");
+	    oss << 'n' << c;
+	    rows.push_back({u.mines_nr, oss.str()});
+	    
+	    for(uint8_t i = 0; i < u.nr; ++i) {
+		// find/add column variable for an uncovered cell
+		auto iv = vars.insert({u.coords[i], vars_nr + 1});
+		if ( iv.second )
+		    ++vars_nr;
+		
+		// set coefficient to 1
+		m.add(rows.size(), iv.first->second, 1);
+	    }
 	}
     }
     
-    var_it_ = vars_.begin();
     if ( !vars_nr )
 	return;
     
@@ -122,79 +235,25 @@ void solver::prepare() {
     //
     
     // add rows
-    lp_->add_row_variables(rows.size());
+    lp->add_row_variables(rows.size());
     for(size_t row = 0; row < rows.size(); ++row) {
-	lp_->set_row_name(row + 1, rows[row].name.data());
-	lp_->set_row_fixed_bound(row + 1, rows[row].fixed_value);
+	lp->set_row_name(row + 1, rows[row].name.data());
+	lp->set_row_fixed_bound(row + 1, rows[row].fixed_value);
     }
     
     // add cols
-    lp_->add_column_variables(vars_nr);
-    for(auto v: vars_) {
+    lp->add_column_variables(vars.size());
+    for(auto v: vars) {
 	oss.str("");
 	oss << 'u' << v.first;
-	lp_->set_column_name(v.second, oss.str().data());
-	lp_->set_column_bounded(v.second, 0, 1);
+	lp->set_column_name(v.second, oss.str().data());
+	lp->set_column_bounded(v.second, 0, 1);
     }
     
-    lp_->set_matrix(m);
+    lp->set_matrix(m);
     
-    //std::cout << lp_->dump() << "\n";
-    I_ASSERT(lp_->presolve(), EX_LOG("could not presolve LP"));
-}
-
-
-std::pair<bool, coord> solver::current_cell() {
-    if ( var_it_ == vars_.end() ) {
-	if ( !have_new_info_ )
-	    return {false, {}};
-	
-	prepare();
-    }
-    
-    if ( var_it_ == vars_.end() ) // still no variables
-	return {false, {}};
-    
-    return {true, var_it_->first};
-}
-
-
-solver::solve_info solver::solve_current_cell() {
-    I_ASSERT(var_it_ != vars_.end(), EX_LOG("don't have a var to look at"));
-    
-    lp_->set_objective_coefficient(var_it_->second, 1);
-    lp_->set_maximize();
-    lp_->solve();
-    
-    solve_info rv;
-    rv.cell_at = var_it_->first;
-    if ( lp_->get_objective_value() == 0 ) {
-	// can't have a mine here
-	if ( board_->field()->is_mine(var_it_->first) ) {
-	    rv.game_was_lost = true;
-	    return rv;
-	}
-	
-	board_->uncovered_safe(var_it_->first, board_->field()->nearby_mines_nr(var_it_->first));
-	add_new_uncovered(var_it_->first);
-	++solved_nr_;
-	rv.was_solved = true;
-	
-    } else {
-	lp_->set_minimize();
-	lp_->solve();
-	auto v = lp_->get_objective_value();
-	if ( v > 0 ) {
-	    // must have a mine here
-	    board_->mark_mine(var_it_->first, true);
-	    ++solved_nr_;
-	    rv.was_solved = true;
-	}
-    }
-    
-    lp_->set_objective_coefficient(var_it_->second, 0);
-    ++var_it_;
-    return rv;
+    //std::cout << lp->dump() << "\n";
+    I_ASSERT(lp->presolve(), EX_LOG("could not presolve LP"));
 }
 
 } // namespace miner
