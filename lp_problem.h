@@ -102,6 +102,7 @@ public:
     static const char* kErrorMessages[];
     void dump_solution();
     status get_status() { return static_cast<status>(glp_get_status(glp_)); }
+    const char* last_errmsg() const { return errmsg(last_ec_); }
     
     std::string dump();
     void set_verbose ( int v ) { glp_opt_.msg_lev = v; }

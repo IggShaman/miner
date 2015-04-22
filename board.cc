@@ -49,4 +49,44 @@ void board::mark_mine ( coord c, bool v ) {
     }
 }
 
+
+void board::dump_region ( miner::coord poi, int range ) const {
+    std::cout << "center=" << poi << "\n";
+    for(int row = std::max(0, poi.row - range); row <= std::min(rows() - 1, static_cast<int>(poi.row) + range); ++row) {
+	std::cout << row << ": ";
+	for(int col = std::max(0, static_cast<int>(poi.col) - range); col <= std::min(static_cast<int>(cols()) - 1, static_cast<int>(poi.col) + range); ++col) {
+	    coord c{row, col};
+	    char ch;
+	    auto v = at(c);
+	    switch(v) {
+	    case cellinfo::boom_mine:
+		ch = '!';
+		break;
+		
+	    case board::cellinfo::marked_mine:
+		ch = '*';
+		break;
+
+	    case board::cellinfo::unknown:
+		ch = '?';
+		break;
+		
+	    case board::cellinfo::n0:
+	    case board::cellinfo::n1:
+	    case board::cellinfo::n2:
+	    case board::cellinfo::n3:
+	    case board::cellinfo::n4:
+	    case board::cellinfo::n5:
+	    case board::cellinfo::n6:
+	    case board::cellinfo::n7:
+	    case board::cellinfo::n8:
+		ch = '0' + static_cast<int>(v);
+		break;
+	    };
+	    std::cout << ch;
+	}
+	std::cout << "\n";
+    }
+}
+
 } // namespace miner

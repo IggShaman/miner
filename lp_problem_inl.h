@@ -47,7 +47,7 @@ inline int problem::set_column_fixed_value ( int c, int r, double v ) { //TEST
 
 inline bool problem::solve() {
     last_ec_ = glp_simplex(glp_, &glp_opt_);
-    I_ASSERT(!last_ec_, EX_LOG("ERROR: " << lp::problem::errmsg(last_ec_)));
+    //I_ASSERT(!last_ec_, EX_LOG("ERROR: " << lp::problem::errmsg(last_ec_)));
     return get_status() == status::kOPT;
 }
 

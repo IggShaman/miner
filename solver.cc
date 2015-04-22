@@ -253,7 +253,14 @@ void solver::prepare ( lp::problem* lp, coord poi, vars_map_type& vars ) {
     lp->set_matrix(m);
     
     //std::cout << lp->dump() << "\n";
-    I_ASSERT(lp->presolve(), EX_LOG("could not presolve LP"));
+    //I_ASSERT(lp->presolve(), EX_LOG("could not presolve LP"));
+    if ( !lp->presolve() ) {
+	errlog << "ERROR: could not presolve: " << lp->last_errmsg()
+	       << "\npoi=" << poi
+	       << "\nLP: " << lp->dump() << "\n";
+	board_->dump_region(poi, kRange);
+	exit(-1);
+    }
 }
 
 } // namespace miner

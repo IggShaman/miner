@@ -39,6 +39,7 @@ public:
     void set_game_lost() { game_lost_ = true; }
     int uncovered_nr() const { return uncovered_nr_; }
     int left_nr() const { return data_.size() - uncovered_nr_ - mines_marked_; }
+    void dump_region ( coord, int range ) const;
     
 private:
     cellinfo& edit_at ( coord c ) { return data_[field_->rows() * c.row + c.col]; }
