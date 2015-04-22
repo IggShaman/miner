@@ -52,11 +52,14 @@ void board::mark_mine ( coord c, bool v ) {
 
 void board::dump_region ( miner::coord poi, int range ) const {
     std::cout << "center=" << poi << "\n";
-    for(int row = std::max(0, poi.row - range); row <= std::min(rows() - 1, static_cast<int>(poi.row) + range); ++row) {
+    int col0 = std::max(0, static_cast<int>(poi.col) - range - 1);
+    int col1 = std::min(static_cast<int>(cols()) - 1, static_cast<int>(poi.col) + range + 1);
+    std::cout << "columns: [" << col0 << " .. " << col1 << "]\n";
+    for(int row = std::max(0, poi.row - range - 1); row <= std::min(rows() - 1, static_cast<int>(poi.row) + range + 1); ++row) {
 	std::cout << row << ": ";
-	for(int col = std::max(0, static_cast<int>(poi.col) - range); col <= std::min(static_cast<int>(cols()) - 1, static_cast<int>(poi.col) + range); ++col) {
+	for(int col = col0; col <= col1; ++col) {
 	    coord c{row, col};
-	    char ch;
+	    char ch{};
 	    auto v = at(c);
 	    switch(v) {
 	    case cellinfo::boom_mine:
@@ -64,9 +67,12 @@ void board::dump_region ( miner::coord poi, int range ) const {
 		break;
 		
 	    case board::cellinfo::marked_mine:
-		ch = '*';
+		if ( field_->is_mine(c) )
+		    ch = '*';
+		else
+		    ch = '%';
 		break;
-
+		
 	    case board::cellinfo::unknown:
 		ch = '?';
 		break;

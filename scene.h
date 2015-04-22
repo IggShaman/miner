@@ -25,6 +25,7 @@ public:
 public slots:
     void zoom_in();
     void zoom_out();
+    void zoom_min();
     
 signals:
     void cell_changed ( miner::coord );
@@ -50,7 +51,8 @@ private:
     QColor cell_opened_bg_;
     QColor cell_unknown_bg_;
     QFont cell_font_;
-    QColor per_nr_colors_[8];
+    QColor per_nr_colors_text_[8];
+    QColor per_nr_colors_box_[8];
     float scale_{0.5};
 };
 

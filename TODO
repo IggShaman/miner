@@ -1,7 +1,6 @@
 * experiment with adding newly discovered constraints on the fly; this increases number of variables and might require too many computations
 * "global" solver mode: add all unknown cells, add constraint row which sums all them up to a number of remaining mines
 * when simplex-based solver can't proceed, calculate/display probability of a mine under each uncovered cell
-* do simplex on sub-segments: smaller LPs solve quicker
 * see if we maximize first would work faster
 * use all threads; would have to copy GLP instances into isolated processes
 * try glpk's MIP

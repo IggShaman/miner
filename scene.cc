@@ -8,7 +8,8 @@ scene::scene()
       cell_border_{200,200,200},
       cell_opened_bg_{220,220,220},
       cell_unknown_bg_{100,100,100},
-      per_nr_colors_{Qt::black, Qt::darkBlue, Qt::darkGreen, Qt::darkCyan, Qt::darkMagenta, Qt::black, Qt::black, Qt::black}
+      per_nr_colors_text_{Qt::black, Qt::darkBlue, Qt::darkGreen, Qt::darkCyan, Qt::darkMagenta, Qt::black, Qt::black, Qt::black},
+      per_nr_colors_box_{Qt::black, Qt::blue, Qt::green, Qt::cyan, Qt::magenta, Qt::yellow, Qt::yellow, Qt::yellow}
 {
     cell_font_.setPointSize(kCellSize - 4);
     cell_font_.setBold(true);
@@ -55,8 +56,10 @@ void scene::paint_cell ( QPainter& painter, coord c ) {
     } else {
 	r = {0,0,kCellSize,kCellSize};
     }
+
+    if ( scale_ >= 0.2 )
+	painter.setFont(cell_font_);
     
-    painter.setFont(cell_font_);
     
     auto ci = board_->at(c);
     switch(ci) {
@@ -83,17 +86,26 @@ void scene::paint_cell ( QPainter& painter, coord c ) {
     case board::cellinfo::n6:
     case board::cellinfo::n7:
     case board::cellinfo::n8:
-	painter.fillRect(r, cell_opened_bg_);
-	painter.setPen(per_nr_colors_[static_cast<int>(ci)]);
-	painter.drawText(1, kCellSize - 1, QString::number(static_cast<int>(ci)));
+	if ( scale_ >= 0.2 ) {
+	    painter.fillRect(r, cell_opened_bg_);
+	    painter.setPen(per_nr_colors_text_[static_cast<int>(ci)]);
+	    painter.drawText(1, kCellSize - 1, QString::number(static_cast<int>(ci)));
+	    
+	} else {
+	    painter.fillRect(r, per_nr_colors_box_[static_cast<int>(ci)]);
+	}
 	break;
     };
     
     if ( show_mines_ and board_->field()->is_mine(c) ) {
-	painter.setPen(Qt::red);
-	for ( size_t r = 1; r < 8; ++r )
-	    for ( size_t c = kCellSize - 8 + r; c < kCellSize; ++c )
-		painter.drawPoint(c,r);
+	if ( scale_ >= 0.2 ) {
+	    painter.setPen(Qt::red);
+	    for ( size_t r = 1; r < 8; ++r )
+		for ( size_t c = kCellSize - 8 + r; c < kCellSize; ++c )
+		    painter.drawPoint(c,r);
+	} else {
+	    painter.fillRect(r, Qt::darkRed);
+	}
     }
     
     painter.restore();
@@ -188,6 +200,12 @@ void scene::zoom_out() {
 void scene::zoom_in() {
     if ( scale_ < 1 )
 	set_scale(std::min({scale_ + 0.05, 1.0}));
+}
+
+
+void scene::zoom_min() {
+    if ( scale_ != 0.05 )
+	set_scale(0.05);
 }
 
 } // namespace miner

@@ -56,6 +56,12 @@ main_window::main_window() : ui_{new Ui::main_window} {
     connect(a, SIGNAL(triggered()), scene_, SLOT(zoom_in()));
     ui_->toolBar->addAction(a);
     
+    a = new QAction("Minimal zoom", this);
+    a->setStatusTip("Set minimal zoom");
+    a->setShortcuts({Qt::CTRL + Qt::Key_0});
+    connect(a, SIGNAL(triggered()), scene_, SLOT(zoom_min()));
+    ui_->toolBar->addAction(a);
+    
     mines_info_label_ = new QLabel();
     statusBar()->addPermanentWidget(mines_info_label_);
     

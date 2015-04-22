@@ -45,8 +45,8 @@ private:
     void prepare ( lp::problem*, miner::coord, vars_map_type& );
     
     struct unknown_neighbors {
-	uint8_t nr{}; // number of neighbors, in "coords" array
-	uint8_t mines_nr{}; // number of mines left
+	uint8_t nr{};                // number of neighbors, in "coords" array
+	uint8_t mines_nr{};          // number of mines left
 	std::array<coord, 8> coords; // cells which are not uncovered and not marked
     };
     unknown_neighbors get_unknowns ( coord ) const;

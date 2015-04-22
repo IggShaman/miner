@@ -170,14 +170,26 @@ bool solver::do_poi ( miner::coord poi ) {
 	    }
 	    
 	    board_->uncovered_safe(v.first, board_->field()->nearby_mines_nr(v.first));
+	    lp->set_column_fixed_bound(v.second, 0);
 	    poi_.push_back(v.first);
 	    result_handler_(feedback::kSolved, v.first);
 	    
 	} else {
 	    lp->set_minimize();
 	    lp->solve();
-	    if ( lp->get_objective_value() > 0 ) { // must have a mine here
+	    auto obj = lp->get_objective_value();
+	    if ( obj >= 0.1 ) { // must have a mine here
+		if ( !board_->field()->is_mine(v.first) ) {
+		    xlog << "ERROR: calculated " << v.first << " to contain a mine, but it doesn't"
+			 << "\nobj=" << obj
+			 << "\npoi=" << poi
+			 << "\nLP: " << lp->dump() << "\n";
+		    board_->dump_region(poi, kRange);
+		    exit(-1);
+		}
+		
 		board_->mark_mine(v.first, true);
+		lp->set_column_fixed_bound(v.second, 1);
 		result_handler_(feedback::kSolved, v.first);
 	    }
 	}
