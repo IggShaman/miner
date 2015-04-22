@@ -25,7 +25,7 @@ public:
 	kSuspended,
 	kGameLost
     };
-    using result_handler = std::function<void(feedback,coord)>;
+    using result_handler = std::function<void(feedback,coord,int)>;
     
     bool is_running() const { return state::kRunning == state_ or state::kSuspending == state_; }
     void start_async();

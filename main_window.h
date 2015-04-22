@@ -24,7 +24,7 @@ private slots:
     void run_solver ( bool );
     void cell_changed ( miner::coord );
     void game_lost();
-    void solver_result_slot ( miner::solver::feedback, miner::coord );
+    void solver_result_slot ( miner::solver::feedback, miner::coord center, int range );
     
 private:
     void update_cell_info();

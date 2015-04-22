@@ -131,7 +131,7 @@ void solver::async_solver() {
     while(ok_to_run()) {
 	if ( poi_.empty() ) {
 	    state_ = state::kSuspended;
-	    result_handler_(feedback::kSuspended, {});
+	    result_handler_(feedback::kSuspended, coord{}, 0);
 	    continue;
 	}
 	
@@ -141,6 +141,7 @@ void solver::async_solver() {
 	    return;
 	}
 	
+	result_handler_(feedback::kSolved, poi_.front(), kRange);
 	poi_.pop_front();
     }
 }
@@ -165,14 +166,14 @@ bool solver::do_poi ( miner::coord poi ) {
 	if ( lp->get_objective_value() == 0 ) {
 	    // can't have a mine here
 	    if ( board_->field()->is_mine(v.first) ) {
-		result_handler_(feedback::kGameLost, {});
+		result_handler_(feedback::kGameLost, coord{}, 0);
 		return false;
 	    }
 	    
 	    board_->uncovered_safe(v.first, board_->field()->nearby_mines_nr(v.first));
 	    lp->set_column_fixed_bound(v.second, 0);
 	    poi_.push_back(v.first);
-	    result_handler_(feedback::kSolved, v.first);
+	    //result_handler_(feedback::kSolved, v.first);
 	    
 	} else {
 	    lp->set_minimize();
@@ -190,7 +191,7 @@ bool solver::do_poi ( miner::coord poi ) {
 		
 		board_->mark_mine(v.first, true);
 		lp->set_column_fixed_bound(v.second, 1);
-		result_handler_(feedback::kSolved, v.first);
+		//result_handler_(feedback::kSolved, v.first);
 	    }
 	}
 	

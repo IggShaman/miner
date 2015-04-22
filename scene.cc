@@ -34,9 +34,17 @@ void scene::set_scale ( float s ) {
 
 void scene::paintEvent ( QPaintEvent* ev ) {
     QPainter painter(this);
-    for ( int row = y2row(ev->rect().top()); row <= y2row(ev->rect().bottom()); ++row )
-	for ( int col = x2col(ev->rect().left()); col <= x2col(ev->rect().right()); ++col )
-	    paint_cell(painter, {row, col});
+
+    if ( is_point_mode() ) {
+	for ( int row = ev->rect().top(); row <= ev->rect().bottom(); ++row )
+	    for ( int col = ev->rect().left(); col <= ev->rect().right(); ++col )
+		paint_point_cell(painter, {row, col});
+	
+    } else {
+	for ( int row = y2row(ev->rect().top()); row <= y2row(ev->rect().bottom()); ++row )
+	    for ( int col = x2col(ev->rect().left()); col <= x2col(ev->rect().right()); ++col )
+		paint_cell(painter, {row, col});
+    }
 }
 
 
@@ -112,11 +120,52 @@ void scene::paint_cell ( QPainter& painter, coord c ) {
 }
 
 
+void scene::paint_point_cell ( QPainter& painter, coord c ) {
+    auto ci = board_->at(c);
+    switch(ci) {
+    case board::cellinfo::boom_mine:
+	painter.setPen(Qt::black);
+	break;
+	
+    case board::cellinfo::marked_mine:
+	painter.setPen(Qt::red);
+	break;
+	
+    case board::cellinfo::unknown:
+	if ( show_mines_ and board_->field()->is_mine(c) )
+	    painter.setPen(Qt::darkRed);
+	else
+	    painter.setPen(cell_unknown_bg_);
+	break;
+	
+    case board::cellinfo::n0:
+	painter.setPen(cell_opened_bg_);
+	break;
+	
+    case board::cellinfo::n1:
+    case board::cellinfo::n2:
+    case board::cellinfo::n3:
+    case board::cellinfo::n4:
+    case board::cellinfo::n5:
+    case board::cellinfo::n6:
+    case board::cellinfo::n7:
+    case board::cellinfo::n8:
+	painter.setPen(per_nr_colors_box_[static_cast<int>(ci)]);
+	break;
+    };
+    painter.drawPoint(c.col, c.row);
+}
+
+
 void scene::mouseReleaseEvent ( QMouseEvent* ev ) {
     if ( !rw_  or board_->game_lost() )
 	return;
-    
-    coord c{y2row(ev->y()), x2col(ev->x())};
+
+    coord c;
+    if ( is_point_mode() )
+	c = {ev->y(), ev->x()};
+    else
+	c = {y2row(ev->y()), x2col(ev->x())};
     
     switch(ev->button()) {
     case Qt::LeftButton: {
@@ -167,14 +216,27 @@ void scene::mouseReleaseEvent ( QMouseEvent* ev ) {
 
 
 void scene::update_cell ( coord c ) {
-    update(col2x(c.col), row2y(c.row), kCellSize * scale_, kCellSize * scale_);
+    if ( is_point_mode() )
+	update(c.col, c.row, 1, 1);
+    else
+	update(col2x(c.col), row2y(c.row), kCellSize * scale_, kCellSize * scale_);
+}
+
+
+void scene::update_box ( coord center, int range ) {
+    if ( is_point_mode() ) {
+	update(center.col - range, center.row - range, 1 + range * 2, 1 + range * 2);
+	
+    } else {
+	update(col2x(center.col - range), row2y(center.row - range), (1 + range * 2) * kCellSize * scale_, (1 + range * 2) * kCellSize * scale_);
+    }
 }
 
 
 void scene::wheelEvent ( QWheelEvent* ev ) {
     if ( ev->modifiers() & Qt::ControlModifier ) {
 	ev->accept();
-
+	
 	auto steps = ev->angleDelta() / 8 / 15;
 	if ( steps.isNull() )
 	    return;
@@ -203,7 +265,7 @@ void scene::zoom_in() {
 }
 
 
-void scene::zoom_min() {
+void scene::set_point_mode() {
     if ( scale_ != 0.05 )
 	set_scale(0.05);
 }

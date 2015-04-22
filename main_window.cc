@@ -56,10 +56,10 @@ main_window::main_window() : ui_{new Ui::main_window} {
     connect(a, SIGNAL(triggered()), scene_, SLOT(zoom_in()));
     ui_->toolBar->addAction(a);
     
-    a = new QAction("Minimal zoom", this);
-    a->setStatusTip("Set minimal zoom");
+    a = new QAction("Point mode", this);
+    a->setStatusTip("Set point mode");
     a->setShortcuts({Qt::CTRL + Qt::Key_0});
-    connect(a, SIGNAL(triggered()), scene_, SLOT(zoom_min()));
+    connect(a, SIGNAL(triggered()), scene_, SLOT(set_point_mode()));
     ui_->toolBar->addAction(a);
     
     mines_info_label_ = new QLabel();
@@ -87,10 +87,12 @@ void main_window::gen_new() {
     if ( solver_ )
 	delete solver_;
     solver_ = new solver(b);
-    solver_->set_result_handler([this](auto ft, miner::coord c){
+    solver_->set_result_handler([this](auto ft, miner::coord c, int range){
+	    //QThread::usleep(0); // slow down a bit for nice animation effect
 	    QMetaObject::invokeMethod(this, "solver_result_slot", Qt::QueuedConnection,
 				      Q_ARG(miner::solver::feedback, ft),
-				      Q_ARG(miner::coord, c));
+				      Q_ARG(miner::coord, c),
+				      Q_ARG(int, range));
 	});
     solver_->start_async();
     
@@ -167,10 +169,10 @@ void main_window::game_lost() {
 }
 
 
-void main_window::solver_result_slot ( solver::feedback ft, miner::coord c ) {
+void main_window::solver_result_slot ( solver::feedback ft, miner::coord c, int range ) {
     switch(ft) {
     case solver::feedback::kSolved:
-	scene_->update_cell(c);
+	scene_->update_box(c, range);
 	update_cell_info();
 	break;
 	

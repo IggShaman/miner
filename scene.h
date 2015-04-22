@@ -19,13 +19,14 @@ public:
     void set_board ( board_ptr );
     void set_show_mines ( bool v ) { show_mines_ = v; update(); }
     void update_cell ( coord );
+    void update_box ( coord center, int range );
     void set_scale ( float );
     void set_rw ( bool v ) { rw_ = v; }
 
 public slots:
     void zoom_in();
     void zoom_out();
-    void zoom_min();
+    void set_point_mode(); // sets minimal zoom, which uses individual pixes to draw field
     
 signals:
     void cell_changed ( miner::coord );
@@ -35,9 +36,11 @@ protected:
     void paintEvent ( QPaintEvent* ) override;
     void mouseReleaseEvent ( QMouseEvent* ) override;
     void wheelEvent ( QWheelEvent* ) override;
+    bool is_point_mode() const { return scale_ == 0.05; }
     
 private:
     void paint_cell ( QPainter&, coord );
+    void paint_point_cell ( QPainter&, coord );
     int x2col ( int x ) { return x / scale_ / kCellSize; }
     int y2row ( int y ) { return y / scale_ / kCellSize; }
     int row2y ( int row ) { return scale_ * row * kCellSize; }
