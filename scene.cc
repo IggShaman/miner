@@ -20,21 +20,21 @@ scene::scene()
 
 void scene::set_board ( board_ptr b ) {
     board_ = b;
-    setFixedSize(board_->rows() * kCellSize, board_->cols() * kCellSize);
+    setFixedSize(board_->cols() * kCellSize, board_->rows() * kCellSize);
     set_scale(scale_);
 }
 
 
 void scene::set_scale ( float s ) {
     scale_ = s;
-    setFixedSize(board_->rows() * kCellSize * scale_, board_->cols() * kCellSize * scale_);
+    setFixedSize(board_->cols() * kCellSize * scale_, board_->rows() * kCellSize * scale_);
     update();
 }
 
 
 void scene::paintEvent ( QPaintEvent* ev ) {
     QPainter painter(this);
-
+    
     if ( is_point_mode() ) {
 	for ( int row = ev->rect().top(); row <= ev->rect().bottom(); ++row )
 	    for ( int col = ev->rect().left(); col <= ev->rect().right(); ++col )
@@ -64,10 +64,9 @@ void scene::paint_cell ( QPainter& painter, coord c ) {
     } else {
 	r = {0,0,kCellSize,kCellSize};
     }
-
+    
     if ( scale_ >= 0.2 )
 	painter.setFont(cell_font_);
-    
     
     auto ci = board_->at(c);
     switch(ci) {

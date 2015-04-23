@@ -25,7 +25,7 @@ public:
     };
     
     void set_field ( field_ptr );
-    cellinfo at ( coord c ) const { return data_[field_->rows() * c.row + c.col]; }
+    cellinfo at ( coord c ) const { return data_[field_->cols() * c.row + c.col]; }
     void mark_mine ( coord, bool );
     void mark_boom ( coord c ) { edit_at(c) = cellinfo::boom_mine; }
     void uncovered_safe ( coord c, uint8_t v ) { edit_at(c) = static_cast<cellinfo>(v); ++uncovered_nr_; }
@@ -42,7 +42,7 @@ public:
     void dump_region ( coord, int range ) const;
     
 private:
-    cellinfo& edit_at ( coord c ) { return data_[field_->rows() * c.row + c.col]; }
+    cellinfo& edit_at ( coord c ) { return data_[field_->cols() * c.row + c.col]; }
     
     field_ptr field_;
     std::vector<cellinfo> data_;

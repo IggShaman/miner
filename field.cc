@@ -39,7 +39,7 @@ void field::gen_random ( int rows, int cols, int mines_nr ) {
     while(mines_nr) {
 	coord c{int(drand48() * rows_), int(drand48() * cols_)};
 	if ( !is_mine(c) ) {
-	    data_[c.row * rows_ + c.col] = true;
+	    data_[c.row * cols_ + c.col] = true;
 	    --mines_nr;
 	}
     }

@@ -5,7 +5,8 @@ namespace miner {
 
 solver::~solver() {
     stop();
-    thread_.join();
+    if ( thread_.joinable() )
+	thread_.join();
 }
 
 
@@ -165,9 +166,15 @@ bool solver::do_poi ( miner::coord poi ) {
 	lp->set_maximize();
 	lp->solve();
 	
-	if ( lp->get_objective_value() == 0 ) {
+	auto obj = lp->get_objective_value();
+	if ( obj < 1e-10 ) {
 	    // can't have a mine here
 	    if ( board_->field()->is_mine(v.first) ) {
+		xlog << "ERROR: game is lost at " << v.first << ": shold've been empty, has a mine"
+		     << "\nobj=" << obj
+		     << "\npoi=" << poi
+		     << "\nLP: " << lp->dump() << "\n";
+		board_->dump_region(poi, kRange);
 		result_handler_(feedback::kGameLost, coord{}, 0);
 		return false;
 	    }
@@ -188,7 +195,7 @@ bool solver::do_poi ( miner::coord poi ) {
 			 << "\npoi=" << poi
 			 << "\nLP: " << lp->dump() << "\n";
 		    board_->dump_region(poi, kRange);
-		    exit(-1);
+		    return false;
 		}
 		
 		board_->mark_mine(v.first, true);
