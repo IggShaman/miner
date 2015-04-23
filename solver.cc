@@ -148,9 +148,11 @@ void solver::async_solver() {
 
 
 bool solver::do_poi ( miner::coord poi ) {
-    auto poi_u = get_unknowns(poi);
-    if ( !poi_u.nr )
-	return true;
+    if ( board_->is_ok(poi) ) {
+	auto poi_u = get_unknowns(poi);
+	if ( !poi_u.nr )
+	    return true;
+    }
     
     std::unique_ptr<lp::problem> lp(new lp::problem);
     vars_map_type vars; // a set of coords current LP is looking at; maps coord to LP's column variable number
@@ -191,6 +193,7 @@ bool solver::do_poi ( miner::coord poi ) {
 		
 		board_->mark_mine(v.first, true);
 		lp->set_column_fixed_bound(v.second, 1);
+		poi_.push_back(v.first);
 		//result_handler_(feedback::kSolved, v.first);
 	    }
 	}
