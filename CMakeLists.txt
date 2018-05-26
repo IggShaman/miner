@@ -18,7 +18,7 @@ SET(MINER_CXX_FILES
   glpk_solver.cc
   field.cc
   board.cc
-  scene.cc
+  game_board_widget.cc
   main_window.cc
   util.cc
   lp_problem.cc
@@ -31,7 +31,7 @@ SET(MINER_UI_FORMS
 )
 
 SET(MINER_MOC_HEADERS
-  scene.h
+  game_board_widget.h
   main_window.h
 )
 

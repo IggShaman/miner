@@ -1,9 +1,9 @@
 #include "board.h"
-#include "scene.h"
+#include "game_board_widget.h"
 
 namespace miner {
 
-Scene::Scene()
+GameBoardWidget::GameBoardWidget()
     : board_{new miner::GameBoard},
       cell_border_{200,200,200},
       cell_opened_bg_{220,220,220},
@@ -15,29 +15,42 @@ Scene::Scene()
           Qt::black, Qt::blue, Qt::green, Qt::cyan, Qt::magenta,
           Qt::yellow, Qt::yellow, Qt::yellow}
 {
-    cell_font_.setPointSize(kCellSize - 4);
+    cell_font_.setPixelSize(kCellSize - 4);
     cell_font_.setBold(true);
     board_->set_field(std::make_shared<Field>());
 }
 
 
-void Scene::set_board(GameBoardPtr b) {
+void GameBoardWidget::set_board(GameBoardPtr b) {
     board_ = b;
-    setFixedSize(board_->cols() * kCellSize, board_->rows() * kCellSize);
-    set_scale(scale_);
+    update_widget_size();
 }
 
 
-void Scene::set_scale(float s) {
-    scale_ = s;
+void GameBoardWidget::update_widget_size() {
     setFixedSize(
-      board_->cols() * kCellSize * scale_,
-      board_->rows() * kCellSize * scale_);
+      board_->cols() * scaled_cell_size(),
+      board_->rows() * scaled_cell_size());
     update();
 }
 
 
-void Scene::paintEvent(QPaintEvent* ev) {
+void GameBoardWidget::set_scale_step(size_t s) {
+    if (s < kMinScaleStep) {
+        s = kMinScaleStep;
+    } else if (s > kMaxScaleStep) {
+        s = kMaxScaleStep;
+    }
+    
+    if (scale_step_ != s) {
+        scale_step_ = s;
+        update_widget_size();
+        // update();
+    }
+}
+
+
+void GameBoardWidget::paintEvent(QPaintEvent* ev) {
     QPainter painter{this};
     
     if (is_point_mode()) {
@@ -61,24 +74,27 @@ void Scene::paintEvent(QPaintEvent* ev) {
 }
 
 
-void Scene::paint_cell(QPainter& painter, Location l) {
+void GameBoardWidget::paint_cell(QPainter& painter, Location l) {
     painter.save();
     
     painter.translate(col2x(l.col), row2y(l.row));
-    painter.scale(scale_, scale_);
+    auto scale_factor = get_scale_factor();
+    painter.scale(scale_factor, scale_factor);
     
     QRect r;
-    if ( scale_ >= 0.5 ) {
+    if (scale_step_ >= kDrawBorderScaleStep) {
+        // draw border
 	painter.setPen(cell_border_);
 	painter.drawLine(0, 0, kCellSize - 1, 0);
 	painter.drawLine(0, 0, 0, kCellSize - 1);
 	r = {1, 1, kCellSize - 1, kCellSize - 1};
 	
     } else {
+        // no border
 	r = {0, 0, kCellSize, kCellSize};
     }
     
-    if (scale_ >= 0.2)
+    if (scale_step_ >= kDrawTextScaleStep)
 	painter.setFont(cell_font_);
     
     auto ci = board_->at(l);
@@ -106,7 +122,7 @@ void Scene::paint_cell(QPainter& painter, Location l) {
     case GameBoard::CellInfo::N6:
     case GameBoard::CellInfo::N7:
     case GameBoard::CellInfo::N8:
-	if ( scale_ >= 0.2 ) {
+	if (scale_step_ >= kDrawTextScaleStep) {
 	    painter.fillRect(r, cell_opened_bg_);
 	    painter.setPen(per_nr_colors_text_[static_cast<int>(ci)]);
 	    painter.drawText(1, kCellSize - 1, QString::number(static_cast<int>(ci)));
@@ -118,7 +134,7 @@ void Scene::paint_cell(QPainter& painter, Location l) {
     };
     
     if (show_mines_ and board_->field()->is_mined(l)) {
-	if (scale_ >= 0.2) {
+	if (scale_step_ >= kDrawTextScaleStep) {
 	    painter.setPen(Qt::red);
 	    for (size_t r = 1; r < 8; ++r)
 		for (size_t c = kCellSize - 8 + r; c < kCellSize; ++c)
@@ -132,7 +148,7 @@ void Scene::paint_cell(QPainter& painter, Location l) {
 }
 
 
-void Scene::paint_point_cell(QPainter& painter, Location l) {
+void GameBoardWidget::paint_point_cell(QPainter& painter, Location l) {
     auto ci = board_->at(l);
     switch(ci) {
     case GameBoard::CellInfo::Exploded:
@@ -170,7 +186,7 @@ void Scene::paint_point_cell(QPainter& painter, Location l) {
 }
 
 
-void Scene::mouseReleaseEvent(QMouseEvent* ev) {
+void GameBoardWidget::mouseReleaseEvent(QMouseEvent* ev) {
     if (!rw_  or board_->game_lost())
 	return;
     
@@ -230,15 +246,16 @@ void Scene::mouseReleaseEvent(QMouseEvent* ev) {
 }
 
 
-void Scene::update_cell(Location l) {
+void GameBoardWidget::update_cell(Location l) {
     if (is_point_mode())
 	update(l.col, l.row, 1, 1);
     else
-	update(col2x(l.col), row2y(l.row), kCellSize * scale_, kCellSize * scale_);
+	update(col2x(l.col), row2y(l.row),
+               scaled_cell_size(), scaled_cell_size());
 }
 
 
-void Scene::update_box(Location center, size_t range) {
+void GameBoardWidget::update_box(Location center, size_t range) {
     if (is_point_mode()) {
 	update(center.col - range, center.row - range, 1 + range * 2, 1 + range * 2);
 	
@@ -246,47 +263,38 @@ void Scene::update_box(Location center, size_t range) {
 	update(
           col2x(center.col - range),
           row2y(center.row - range),
-          (1 + range * 2) * kCellSize * scale_,
-          (1 + range * 2) * kCellSize * scale_);
+          (1 + range * 2) * scaled_cell_size(),
+          (1 + range * 2) * scaled_cell_size());
     }
 }
 
 
-void Scene::wheelEvent ( QWheelEvent* ev ) {
-    if ( ev->modifiers() & Qt::ControlModifier ) {
+void GameBoardWidget::wheelEvent(QWheelEvent* ev) {
+    if (ev->modifiers() & Qt::ControlModifier) {
 	ev->accept();
 	
 	auto steps = ev->angleDelta() / 8 / 15;
-	if ( steps.isNull() )
+	if (steps.isNull())
 	    return;
-	
-	scale_ += 0.05 * steps.y();
-	if ( scale_ < 0.05 )
-	    scale_ = 0.05;
-	else if ( scale_ > 1 )
-	    scale_ = 1;
-	
-	set_scale(scale_);
-	return;
+        
+	set_scale_step((size_t)std::max(0, steps.y() + (int)scale_step_));
+        return;
     }
 }
 
 
-void Scene::zoom_out() {
-    if ( scale_ > 0.05 )
-	set_scale(std::max({0.05, scale_ - 0.05}));
+void GameBoardWidget::zoom_out() {
+    set_scale_step(scale_step_ - 1);
 }
 
 
-void Scene::zoom_in() {
-    if ( scale_ < 1 )
-	set_scale(std::min({scale_ + 0.05, 1.0}));
+void GameBoardWidget::zoom_in() {
+    set_scale_step(scale_step_ + 1);
 }
 
 
-void Scene::set_point_mode() {
-    if ( scale_ != 0.05 )
-	set_scale(0.05);
+void GameBoardWidget::set_point_mode() {
+    set_scale_step(kPointModeScaleStep);
 }
 
 } // namespace miner

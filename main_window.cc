@@ -1,21 +1,26 @@
 #include "board.h"
 #include "glpk_solver.h"
-#include "scene.h"
+#include "game_board_widget.h"
 #include "main_window.h"
+#include "ui_main_window.h"
 #include "ui_configure_field_dialog.h"
 
 namespace miner {
+
+MainWindow::~MainWindow() {
+}
+
 
 MainWindow::MainWindow() : ui_{new Ui::MainWindow} {
     ui_->setupUi(this);
     
     ui_->scrollArea->setAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
-    scene_ = new Scene;
-    ui_->scrollArea->setWidget(scene_);
-    scene_->show();
-    connect(scene_, SIGNAL(cell_changed(miner::Location)),
+    game_board_widget_ = new GameBoardWidget;
+    ui_->scrollArea->setWidget(game_board_widget_);
+    game_board_widget_->show();
+    connect(game_board_widget_, SIGNAL(cell_changed(miner::Location)),
             SLOT(cell_changed(miner::Location)));
-    connect(scene_, SIGNAL(game_lost()), SLOT(game_lost()));
+    connect(game_board_widget_, SIGNAL(game_lost()), SLOT(game_lost()));
     
     connect(ui_->action_About, SIGNAL(triggered()), SLOT(action_about()));
     
@@ -47,19 +52,19 @@ MainWindow::MainWindow() : ui_{new Ui::MainWindow} {
     a = new QAction("-", this);
     a->setStatusTip("Zoom out");
     a->setShortcuts({Qt::CTRL + Qt::Key_Minus});
-    connect(a, SIGNAL(triggered()), scene_, SLOT(zoom_out()));
+    connect(a, SIGNAL(triggered()), game_board_widget_, SLOT(zoom_out()));
     ui_->toolBar->addAction(a);
     
     a = new QAction("+", this);
     a->setStatusTip("Zoom in");
-    a->setShortcuts({Qt::CTRL + Qt::Key_Plus});
-    connect(a, SIGNAL(triggered()), scene_, SLOT(zoom_in()));
+    a->setShortcuts({Qt::CTRL + Qt::Key_Plus, Qt::CTRL + Qt::Key_Equal});
+    connect(a, SIGNAL(triggered()), game_board_widget_, SLOT(zoom_in()));
     ui_->toolBar->addAction(a);
     
     a = new QAction("Point mode", this);
     a->setStatusTip("Set point mode");
     a->setShortcuts({Qt::CTRL + Qt::Key_0});
-    connect(a, SIGNAL(triggered()), scene_, SLOT(set_point_mode()));
+    connect(a, SIGNAL(triggered()), game_board_widget_, SLOT(set_point_mode()));
     ui_->toolBar->addAction(a);
     
     mines_info_label_ = new QLabel();
@@ -72,28 +77,27 @@ MainWindow::MainWindow() : ui_{new Ui::MainWindow} {
 void MainWindow::gen_new() {
     show_mines_action_->setChecked(false);
     
-    auto f = std::make_shared<Field>();
-    f->gen_random(new_rows_, new_cols_, new_mines_);
+    auto field = std::make_shared<Field>();
+    field->gen_random(new_rows_, new_cols_, new_mines_);
     
-    auto b = std::make_shared<GameBoard>();
-    b->set_field(f);
-    scene_->set_board(b);
+    auto board = std::make_shared<GameBoard>();
+    board->set_field(field);
+    game_board_widget_->set_board(board);
     
-    if (solver_)
-	delete solver_;
-    solver_ = new GlpkSolver{b};
+    solver_.reset(new GlpkSolver{board});
     solver_->set_result_handler([this](auto ft, miner::Location l, int range){
 	    //QThread::usleep(0); // slow down a bit for nice animation effect
-	    QMetaObject::invokeMethod(this, "solver_result_slot", Qt::QueuedConnection,
-				      Q_ARG(miner::GlpkSolver::feedback, ft),
-				      Q_ARG(miner::Location, l),
-				      Q_ARG(int, range));
+	    QMetaObject::invokeMethod(
+              this, "solver_result_slot", Qt::QueuedConnection,
+              Q_ARG(miner::GlpkSolver::feedback, ft),
+              Q_ARG(miner::Location, l),
+              Q_ARG(int, range));
 	});
     solver_->start_async();
     
     update_cell_info();
     
-    scene_->set_rw(true);
+    game_board_widget_->set_rw(true);
 }
 
 
@@ -114,19 +118,19 @@ void MainWindow::configure_field() {
 }
 
 
-void MainWindow::show_mines_toggled ( bool v ) {
-    scene_->set_show_mines(v);
+void MainWindow::show_mines_toggled(bool v) {
+    game_board_widget_->set_show_mines(v);
 }
 
 
-void MainWindow::run_solver ( bool v ) {
-    if ( scene_->board()->game_lost() )
+void MainWindow::run_solver(bool v) {
+    if (game_board_widget_->board()->game_lost())
 	return;
     
-    if ( v ) {
-	scene_->set_rw(false);
+    if (v) {
+	game_board_widget_->set_rw(false);
 	solver_->resume();
-
+        
     } else {
 	solver_->suspend();
     }
@@ -153,15 +157,15 @@ void MainWindow::cell_changed(miner::Location l) {
 void MainWindow::update_cell_info() {
     mines_info_label_->setText(
       QString("Mines: %1 / %2 Uncovered: %3 Left: %4")
-      .arg(scene_->board()->mines_marked())
-      .arg(scene_->board()->field()->mines_nr())
-      .arg(scene_->board()->uncovered_nr())
-      .arg(scene_->board()->left_nr()));
+      .arg(game_board_widget_->board()->mines_marked())
+      .arg(game_board_widget_->board()->field()->mines_nr())
+      .arg(game_board_widget_->board()->uncovered_nr())
+      .arg(game_board_widget_->board()->left_nr()));
 }
 
 
 void MainWindow::game_lost() {
-    scene_->board()->set_game_lost();
+    game_board_widget_->board()->set_game_lost();
     show_mines_action_->setChecked(true);
 }
 
@@ -169,12 +173,12 @@ void MainWindow::game_lost() {
 void MainWindow::solver_result_slot(GlpkSolver::feedback ft, miner::Location l, int range ) {
     switch(ft) {
     case GlpkSolver::feedback::kSolved:
-	scene_->update_box(l, range);
+	game_board_widget_->update_box(l, range);
 	update_cell_info();
 	break;
 	
     case GlpkSolver::feedback::kSuspended:
-	scene_->set_rw(true);
+	game_board_widget_->set_rw(true);
 	run_solver_action_->setChecked(false);
 	break;
 	
