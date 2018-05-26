@@ -45,7 +45,6 @@ void GameBoardWidget::set_scale_step(size_t s) {
     if (scale_step_ != s) {
         scale_step_ = s;
         update_widget_size();
-        // update();
     }
 }
 
@@ -192,11 +191,11 @@ void GameBoardWidget::mouseReleaseEvent(QMouseEvent* ev) {
     
     Location l;
     if (is_point_mode())
-	l = {(size_t)std::min(0, ev->y()),
-             (size_t)std::min(0, ev->x())};
+	l = {(size_t)std::max(0, ev->y()),
+             (size_t)std::max(0, ev->x())};
     else
-	l = {y2row((size_t)std::min(0, ev->y())),
-             x2col((size_t)std::min(0, ev->x()))};
+	l = {y2row((size_t)std::max(0, ev->y())),
+             x2col((size_t)std::max(0, ev->x()))};
     
     switch(ev->button()) {
     case Qt::LeftButton: {
