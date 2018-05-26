@@ -1,12 +1,10 @@
-cmake_minimum_required(VERSION 2.8)
-
+cmake_minimum_required(VERSION 3.10)
+SET(CMAKE_CXX_STANDARD 14)
 project(MINER)
-
-#OPTION(ENABLE_TESTS "Enable tests" OFF)
 
 include_directories(${MINER_SOURCE_DIR})
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W -Wall -Wextra -std=c++14 -fPIE")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W -Wall -Wextra -fPIC")
 
 SET(QT_COMPONENTS Core Widgets)
 add_definitions(-DQT_NO_DEBUG -DQT)
@@ -17,7 +15,7 @@ add_definitions(${Qt5Core_DEFINITIONS} ${Qt5Widgets_DEFINITIONS})
 include(${MINER_SOURCE_DIR}/cmake/pch.cmake)
 
 SET(MINER_CXX_FILES
-  solver.cc
+  glpk_solver.cc
   field.cc
   board.cc
   scene.cc
@@ -45,5 +43,5 @@ include_directories(${CMAKE_BINARY_DIR})
 
 create_precompiled_header(stable stable.h)
 add_executable(miner ${MINER_CXX_FILES} ${MINER_UIS_H} ${MINER_MOC_SRCS} ${MINER_RC_SRCS})
-target_link_libraries(miner glpk ${Qt5Core_LIBRARIES} ${Qt5Widgets_LIBRARIES})
+target_link_libraries(miner glpk ${Qt5Core_LIBRARIES} ${Qt5Widgets_LIBRARIES} -lpthread)
 use_precompiled_header(miner stable)

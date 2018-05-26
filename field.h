@@ -1,16 +1,18 @@
-#ifndef __MINE_FIELD_H_
-#define __MINE_FIELD_H_
+#pragma once
 
 namespace miner {
 
-struct coord {
-    coord() : row{}, col{} {}
-    coord ( int _row, int _col ) : row{_row}, col{_col} {}
+// Represents a coordinate on a field.
+struct Location {
+    Location() : row{}, col{} {}
+    Location(size_t _row, size_t _col) : row{_row}, col{_col} {}
     
-    int row{};
-    int col{};
+    size_t row{};
+    size_t col{};
     
-    bool operator== ( const coord& other ) const { return row == other.row and col == other.col; }
+    bool operator==(const Location& other) const {
+        return row == other.row and col == other.col;
+    }
 };
 
 } // namespace miner
@@ -18,14 +20,14 @@ struct coord {
 namespace std {
 
 template<>
-struct hash<miner::coord> {
-    std::size_t operator() ( const miner::coord& c ) const {
-	return qHash(c.col, qHash(c.row, 0));
+struct hash<miner::Location> {
+    std::size_t operator()(const miner::Location& l) const {
+	return qHash(l.col, qHash(l.row, 0));
     }
 };
 
-inline ostream& operator<< ( ostream& os, const miner::coord& c ) {
-    os << '(' << c.row << ' ' << c.col << ')';
+inline ostream& operator<<(ostream& os, const miner::Location& l) {
+    os << '(' << l.row << ' ' << l.col << ')';
     return os;
 }
 
@@ -33,27 +35,30 @@ inline ostream& operator<< ( ostream& os, const miner::coord& c ) {
 
 namespace miner {
 
-class field {
+//
+// Represents a true mine field.
+//
+class Field {
 public:
-    void gen_random ( int rows, int cols, int mines_nr );
-    void reset ( int rows, int cols );
-    void set_mine ( coord, bool v ); // for manual minefield control; maintains mines_nr
-    bool is_mine ( coord c ) const { return data_[c.row * cols_ + c.col]; }
-    int nearby_mines_nr ( coord ) const;
-    int rows() const { return rows_; }
-    int cols() const { return cols_; }
-    int mines_nr() const { return mines_nr_; }
+    void gen_random(size_t rows, size_t cols, size_t mines_nr);
+    void reset(size_t rows, size_t cols);
+    void mark_mined(Location, bool); // for manual minefield control; maintains mines_nr
+    bool is_mined(Location l) const { return data_[l.row * cols_ + l.col]; }
+    uint8_t nearby_mines_nr(Location) const;
+    size_t rows() const { return rows_; }
+    size_t cols() const { return cols_; }
+    size_t mines_nr() const { return mines_nr_; }
     
 private:
-    int mines_nr_{};
-    int rows_{};
-    int cols_{};
+    size_t to_index(Location) const;
+    
+    size_t mines_nr_{};
+    size_t rows_{};
+    size_t cols_{};
     std::vector<bool> data_;
 };
 
-using field_ptr = std::shared_ptr<field>;
-using field_cptr = std::shared_ptr<const field>;
+using FieldPtr = std::shared_ptr<Field>;
+using FieldCPtr = std::shared_ptr<const Field>;
 
-} // namespace mine
-
-#endif // __MINE_FIELD_H_
+} // namespace miner

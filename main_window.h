@@ -1,37 +1,36 @@
-#ifndef __MINER_MW_H_
-#define __MINER_MW_H_
+#pragma once
 
 #include "field.h"
-#include "solver.h"
+#include "glpk_solver.h"
+#include "ui_main_window.h"
 
-namespace Ui { class main_window; }
+namespace Ui { class MainWindow; }
 
 namespace miner {
 
-class scene;
+class Scene;
 
-class main_window : public QMainWindow {
+class MainWindow : public QMainWindow {
     Q_OBJECT;
 public:
-    main_window();
-    ~main_window();
-    
+    MainWindow();
+
 private slots:
     void action_about();
     void gen_new();
     void configure_field();
-    void show_mines_toggled ( bool );
-    void run_solver ( bool );
-    void cell_changed ( miner::coord );
+    void show_mines_toggled(bool);
+    void run_solver(bool);
+    void cell_changed(miner::Location);
     void game_lost();
-    void solver_result_slot ( miner::solver::feedback, miner::coord center, int range );
-    
+    void solver_result_slot(
+      miner::GlpkSolver::feedback, miner::Location center, int range);
 private:
     void update_cell_info();
     
-    Ui::main_window* ui_{};
-    scene* scene_{};
-    solver* solver_{};
+    std::unique_ptr<Ui::MainWindow> ui_;
+    Scene* scene_{};
+    GlpkSolver* solver_{};
     
     size_t new_rows_{3};
     size_t new_cols_{3};
@@ -43,5 +42,3 @@ private:
 };
 
 } // namespace miner
-
-#endif // __MINER_MW_H_

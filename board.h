@@ -1,75 +1,76 @@
-#ifndef __MINER_BOARD_H_
-#define __MINER_BOARD_H_
+#pragma once
 
 #include "field.h"
 
 namespace miner {
 
-class cell_neighborhood_iterator;
+class CellNeighborhoodIterator;
 
-class board {
+class GameBoard {
 public:
-    enum class cellinfo : int8_t {	
-	boom_mine = -3,
-	marked_mine = -2,
-	unknown = -1,
-	n0 = 0,
-	n1 = 1,
-	n2 = 2,
-	n3 = 3,
-	n4 = 4,
-	n5 = 5,
-	n6 = 6,
-	n7 = 7,
-	n8 = 8,
+    enum class CellInfo : int8_t {
+	Exploded = -3,
+	MarkedMine = -2,
+	Unknown = -1,
+	N0 = 0,
+	N1 = 1,
+	N2 = 2,
+	N3 = 3,
+	N4 = 4,
+	N5 = 5,
+	N6 = 6,
+	N7 = 7,
+	N8 = 8,
     };
     
-    void set_field ( field_ptr );
-    cellinfo at ( coord c ) const { return data_[field_->cols() * c.row + c.col]; }
-    void mark_mine ( coord, bool );
-    void mark_boom ( coord c ) { edit_at(c) = cellinfo::boom_mine; }
-    void uncovered_safe ( coord c, uint8_t v ) { edit_at(c) = static_cast<cellinfo>(v); ++uncovered_nr_; }
-    int rows() const { return field_->rows(); }
-    int cols() const { return field_->cols(); }
-    int mines_marked() const { return mines_marked_; }
-    field_cptr field() const { return field_; }
-    cell_neighborhood_iterator neighborhood ( coord );
-    bool is_ok ( coord c ) const { return static_cast<int>(at(c)) >= 0; }
+    void set_field(FieldPtr);
+    CellInfo at(Location l) const { return data_[to_index(l)]; }
+    void mark_mine(Location, bool);
+    void mark_exploded(Location l) { edit_at(l) = CellInfo::Exploded; }
+    void uncovered_safe(Location, uint8_t);
+    size_t rows() const { return field_->rows(); }
+    size_t cols() const { return field_->cols(); }
+    size_t mines_marked() const { return mines_marked_; }
+    FieldCPtr field() const { return field_; }
+    CellNeighborhoodIterator neighborhood(Location);
+    bool is_ok(Location l) const { return static_cast<int>(at(l)) >= 0; }
     bool game_lost() const { return game_lost_; }
     void set_game_lost() { game_lost_ = true; }
-    int uncovered_nr() const { return uncovered_nr_; }
-    int left_nr() const { return data_.size() - uncovered_nr_ - mines_marked_; }
-    void dump_region ( coord, int range ) const;
+    size_t uncovered_nr() const { return uncovered_nr_; }
+    size_t left_nr() const { return data_.size() - uncovered_nr_ - mines_marked_; }
+    void dump_region(Location, size_t range) const;
     
 private:
-    cellinfo& edit_at ( coord c ) { return data_[field_->cols() * c.row + c.col]; }
+    size_t to_index(const Location& l) const { return field_->cols() * l.row + l.col; }
+    CellInfo& edit_at(Location l) { return data_[to_index(l)]; }
     
-    field_ptr field_;
-    std::vector<cellinfo> data_;
-    int mines_marked_{};
-    int uncovered_nr_{};
+    FieldPtr field_;
+    std::vector<CellInfo> data_;
+    size_t mines_marked_{};
+    size_t uncovered_nr_{};
     bool game_lost_{};
 };
 
-using board_ptr = std::shared_ptr<board>;
+using GameBoardPtr = std::shared_ptr<GameBoard>;
 
-class cell_neighborhood_iterator {
+class CellNeighborhoodIterator {
 public:
-    cell_neighborhood_iterator ( board*, coord );
+    CellNeighborhoodIterator(GameBoard*, Location);
     
-    cell_neighborhood_iterator& operator++() { ++i_; return *this; }
+    CellNeighborhoodIterator& operator++() { ++i_; return *this; }
     operator bool() const { return i_ < end_; }
-    board::cellinfo at() { return board_->at(neigh_[i_]); }
-    const coord& operator*() const { return neigh_[i_]; }
+    GameBoard::CellInfo at() { return board_->at(neighbors_[i_]); }
+    const Location& operator*() const { return neighbors_[i_]; }
     
 private:
     uint8_t i_{}, end_{};
-    std::array<coord, 8> neigh_;
-    board* board_{};
+    std::array<Location, 8> neighbors_;
+    GameBoard* board_{};
 };
 
-inline cell_neighborhood_iterator board::neighborhood ( coord c ) { return cell_neighborhood_iterator(this, c); }
+inline CellNeighborhoodIterator
+GameBoard::neighborhood(Location l) {
+    return CellNeighborhoodIterator(this, l);
+}
 
 } // namespace miner
-
-#endif // __MINER_BOARD_H_

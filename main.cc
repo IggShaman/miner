@@ -17,11 +17,11 @@
 
 #include "main_window.h"
 
-int main ( int argc, char** argv ) {
-    QApplication q(argc, argv);
-    qRegisterMetaType<miner::solver::feedback>("miner::solver::feedback");
-    qRegisterMetaType<miner::coord>("miner::coord");
-    miner::main_window mw;
+int main(int argc, char** argv) {
+    QApplication q{argc, argv};
+    qRegisterMetaType<miner::GlpkSolver::feedback>("miner::GlpkSolver::feedback");
+    qRegisterMetaType<miner::Location>("miner::Location");
+    miner::MainWindow mw;
     mw.show();
     return q.exec();
 }

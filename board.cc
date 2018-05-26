@@ -2,90 +2,105 @@
 
 namespace miner {
 
-void board::set_field ( field_ptr f ) {
-    field_ = f;
-    data_.resize(field_->rows() * field_->cols());
-    std::fill(data_.begin(), data_.end(), cellinfo::unknown);
+void GameBoard::uncovered_safe(Location l, uint8_t v) {
+    edit_at(l) = static_cast<CellInfo>(v);
+    ++uncovered_nr_;
 }
 
 
-cell_neighborhood_iterator::cell_neighborhood_iterator ( board* b, coord c )
-    : board_{b} {
+void GameBoard::set_field(FieldPtr field) {
+    field_ = field;
+    data_.resize(field_->rows() * field_->cols());
+    std::fill(data_.begin(), data_.end(), CellInfo::Unknown);
+}
+
+
+CellNeighborhoodIterator::CellNeighborhoodIterator(GameBoard* board, Location l)
+    : board_{board} {
     
     end_ = 0;
-    if ( c.row > 0 ) {
-	if ( c.col > 0 ) neigh_[end_++] = {c.row-1, c.col-1};
-	neigh_[end_++] = {c.row-1, c.col};
-	if ( c.col < b->cols() - 1 ) neigh_[end_++] = {c.row-1, c.col+1};
+    if (l.row > 0) {
+	if (l.col > 0)
+            neighbors_[end_++] = {l.row-1, l.col-1};
+	neighbors_[end_++] = {l.row-1, l.col};
+	if (l.col < board_->cols() - 1)
+            neighbors_[end_++] = {l.row-1, l.col+1};
     }
     
-    if ( c.col > 0 ) neigh_[end_++] = {c.row, c.col-1};
-    if ( c.col < b->cols() - 1 ) neigh_[end_++] = {c.row, c.col+1};
+    if (l.col > 0)
+        neighbors_[end_++] = {l.row, l.col-1};
+    if (l.col < board_->cols() - 1)
+        neighbors_[end_++] = {l.row, l.col+1};
     
-    if ( c.row < b->rows() - 1 ) {
-	if ( c.col > 0 ) neigh_[end_++] = {c.row+1, c.col-1};
-	neigh_[end_++] = {c.row+1, c.col};
-	if ( c.col < b->cols() - 1 ) neigh_[end_++] = {c.row+1, c.col+1};
+    if (l.row < board_->rows() - 1) {
+	if (l.col > 0)
+            neighbors_[end_++] = {l.row+1, l.col-1};
+	neighbors_[end_++] = {l.row+1, l.col};
+	if (l.col < board_->cols() - 1)
+            neighbors_[end_++] = {l.row+1, l.col+1};
     }
 }
 
 
-void board::mark_mine ( coord c, bool v ) {
-    auto& ci = edit_at(c);
+void GameBoard::mark_mine(Location l, bool v) {
+    auto& ci = edit_at(l);
     
-    if ( v ) {
-	if ( ci != cellinfo::unknown )
+    if (v) {
+	if (ci != CellInfo::Unknown)
 	    return;
 	
-	ci = cellinfo::marked_mine;
+	ci = CellInfo::MarkedMine;
 	++mines_marked_;
 	
     } else {
-	if ( ci != cellinfo::marked_mine )
+	if (ci != CellInfo::MarkedMine)
 	    return;
-	
-	ci = cellinfo::unknown;
+        
+	ci = CellInfo::Unknown;
 	--mines_marked_;
     }
 }
 
 
-void board::dump_region ( miner::coord poi, int range ) const {
+void GameBoard::dump_region(Location poi, size_t range) const {
     std::cout << "center=" << poi << "\n";
-    int col0 = std::max(0, static_cast<int>(poi.col) - range - 1);
-    int col1 = std::min(static_cast<int>(cols()) - 1, static_cast<int>(poi.col) + range + 1);
+    size_t col0 = poi.col > range + 1 ? poi.col - range - 1 : 0;
+    size_t col1 = std::min(cols() - 1, poi.col + range + 1);
     std::cout << "columns: [" << col0 << " .. " << col1 << "]\n";
-    for(int row = std::max(0, poi.row - range - 1); row <= std::min(rows() - 1, static_cast<int>(poi.row) + range + 1); ++row) {
+    for(size_t row = poi.row > range + 1 ? poi.row - range - 1 : 0;
+        row <= std::min(rows() - 1, poi.row + range + 1);
+        ++row) {
+        
 	std::cout << row << ": ";
-	for(int col = col0; col <= col1; ++col) {
-	    coord c{row, col};
+	for(size_t col = col0; col <= col1; ++col) {
+	    Location l{row, col};
 	    char ch{};
-	    auto v = at(c);
+	    auto v = at(l);
 	    switch(v) {
-	    case cellinfo::boom_mine:
+	    case CellInfo::Exploded:
 		ch = '!';
 		break;
 		
-	    case board::cellinfo::marked_mine:
-		if ( field_->is_mine(c) )
+	    case GameBoard::CellInfo::MarkedMine:
+		if ( field_->is_mined(l) )
 		    ch = '*';
 		else
 		    ch = '%';
 		break;
 		
-	    case board::cellinfo::unknown:
+	    case GameBoard::CellInfo::Unknown:
 		ch = '?';
 		break;
 		
-	    case board::cellinfo::n0:
-	    case board::cellinfo::n1:
-	    case board::cellinfo::n2:
-	    case board::cellinfo::n3:
-	    case board::cellinfo::n4:
-	    case board::cellinfo::n5:
-	    case board::cellinfo::n6:
-	    case board::cellinfo::n7:
-	    case board::cellinfo::n8:
+	    case GameBoard::CellInfo::N0:
+	    case GameBoard::CellInfo::N1:
+	    case GameBoard::CellInfo::N2:
+	    case GameBoard::CellInfo::N3:
+	    case GameBoard::CellInfo::N4:
+	    case GameBoard::CellInfo::N5:
+	    case GameBoard::CellInfo::N6:
+	    case GameBoard::CellInfo::N7:
+	    case GameBoard::CellInfo::N8:
 		ch = '0' + static_cast<int>(v);
 		break;
 	    };

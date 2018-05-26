@@ -2,7 +2,7 @@
 # Sets up precompiled headers for your C/C++ project.
 #
 #=====
-# Copyright 2009-2013 Igor Shevchenko
+# Copyright 2009-2013 Igor Shevchenko <igor.shevchenko@gmail.com>
 #
 # Permission to use, copy, modify, and distribute this software and its
 # documentation for any purpose, without fee, and without a written agreement
@@ -31,8 +31,11 @@ MACRO(PCH_GET_COMPILE_FLAGS _pch_compile_flags)
         LIST(APPEND ${_pch_compile_flags} "-I${item}")
     ENDFOREACH()
 
-    GET_DIRECTORY_PROPERTY(_directory_flags DEFINITIONS)
-    LIST(APPEND ${_pch_compile_flags} ${_directory_flags})
+    GET_DIRECTORY_PROPERTY(_directory_flags COMPILE_DEFINITIONS)
+    FOREACH(item ${_directory_flags})
+        LIST(APPEND ${_pch_compile_flags} "-D${item}")
+    ENDFOREACH()
+
     LIST(APPEND ${_pch_compile_flags} ${CMAKE_CXX_FLAGS})
 
     SEPARATE_ARGUMENTS(${_pch_compile_flags})
