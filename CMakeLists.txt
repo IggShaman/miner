@@ -15,6 +15,7 @@ add_definitions(${Qt5Core_DEFINITIONS} ${Qt5Widgets_DEFINITIONS})
 include(${MINER_SOURCE_DIR}/cmake/pch.cmake)
 
 SET(MINER_CXX_FILES
+  solver.cc
   glpk_solver.cc
   field.cc
   board.cc

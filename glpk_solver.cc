@@ -3,128 +3,6 @@
 
 namespace miner {
 
-GlpkSolver::~GlpkSolver() {
-    stop();
-    if ( thread_.joinable() )
-	thread_.join();
-}
-
-
-void GlpkSolver::start_async() {
-    I_ASSERT(
-      state_ == state::kNew,
-      EX_LOG("state==" << static_cast<int>(state_.load()) << " != kNew"));
-    I_ASSERT(
-      !thread_.joinable(),
-      EX_LOG("thread is joinable"));
-    
-    state_ = state::kSuspended;
-    thread_ = std::thread(&GlpkSolver::async_solver, this);
-}
-
-
-bool GlpkSolver::ok_to_run() {
-    while(true) {
-	switch(state_) {
-	case state::kNew:
-	case state::kSuspended: {
-	    std::unique_lock<std::mutex> lck(mtx_);
-	    cond_.wait(lck);
-	    break;
-	}
-	    
-	case state::kSuspending:
-	    state_ = state::kSuspended;
-	    break;
-	    
-	case state::kRunning:
-	    return true;
-	    
-	case state::kExit:
-	    return false;
-	};
-    }
-}
-
-
-void GlpkSolver::suspend() {
-    I_ASSERT(state_ != state::kExit, EX_LOG("state == kExit"));
-    std::lock_guard<std::mutex> lck(mtx_);
-    state_ = state::kSuspending;
-    cond_.notify_one();
-}
-
-
-void GlpkSolver::resume() {
-    I_ASSERT(state_ != state::kExit, EX_LOG("state == kExit"));
-    std::lock_guard<std::mutex> lck(mtx_);
-    state_ = state::kRunning;
-    cond_.notify_one();
-}
-
-
-void GlpkSolver::stop() {
-    std::lock_guard<std::mutex> lck(mtx_);
-    state_ = state::kExit;
-    cond_.notify_one();
-}
-
-
-void GlpkSolver::add_poi(Location l) {
-    I_ASSERT(!is_running(), EX_LOG("tried to add POI while solver is running"));
-    poi_.push_back(l);
-}
-
-
-GlpkSolver::unknown_neighbors GlpkSolver::get_unknowns(Location l) const {
-    unknown_neighbors rv;
-    
-    auto ci = board_->at(l);
-    switch(ci) {
-    case GameBoard::CellInfo::Exploded:
-    case GameBoard::CellInfo::MarkedMine:
-    case GameBoard::CellInfo::Unknown:
-	I_FAIL("internal error: cell " << l << " is of type "
-               << static_cast<int>(ci) << ": not a free open one");
-	break;
-	
-    case GameBoard::CellInfo::N0:
-    case GameBoard::CellInfo::N1:
-    case GameBoard::CellInfo::N2:
-    case GameBoard::CellInfo::N3:
-    case GameBoard::CellInfo::N4:
-    case GameBoard::CellInfo::N5:
-    case GameBoard::CellInfo::N6:
-    case GameBoard::CellInfo::N7:
-    case GameBoard::CellInfo::N8:
-	rv.mines_nr = static_cast<size_t>(ci);
-	break;
-    };
-    
-    {
-	auto it = board_->neighborhood(l);
-	while(it) {
-	    switch(it.at()) {
-	    case GameBoard::CellInfo::MarkedMine:
-                --rv.mines_nr;
-                break;
-                
-	    case GameBoard::CellInfo::Unknown:
-		rv.coords[rv.nr++] = *it;
-		break;
-                
-	    default:
-		break;
-	    }
-	    
-	    ++it;
-	}
-    }
-    
-    return rv;
-}
-
-
 struct lp_row_info {
     lp_row_info(uint8_t v, std::string n)
         : fixed_value{v}, name{n} {}
@@ -134,28 +12,8 @@ struct lp_row_info {
 };
 
 
-void GlpkSolver::async_solver() {
-    while(ok_to_run()) {
-	if (poi_.empty()) {
-	    state_ = state::kSuspended;
-	    result_handler_(feedback::kSuspended, Location{}, 0);
-	    continue;
-	}
-	
-	if (!do_poi(poi_.front())) {
-	    poi_.pop_front();
-	    state_ = state::kExit;
-	    return;
-	}
-	
-	result_handler_(feedback::kSolved, poi_.front(), kRange);
-	poi_.pop_front();
-    }
-}
-
-
 bool GlpkSolver::do_poi(miner::Location poi) {
-    if (board_->is_ok(poi)) {
+    if (board_->is_uncovered(poi)) {
 	auto poi_u = get_unknowns(poi);
 	if (!poi_u.nr)
 	    return true;
@@ -182,16 +40,15 @@ bool GlpkSolver::do_poi(miner::Location poi) {
 		     << "\nobj=" << obj
 		     << "\npoi=" << poi
 		     << "\nLP: " << lp->dump() << "\n";
-		board_->dump_region(poi, kRange);
-		result_handler_(feedback::kGameLost, Location{}, 0);
+		board_->dump_region(poi, 3);
+		result_handler_(FeedbackState::kGameLost, Location{}, 0);
 		return false;
 	    }
 	    
 	    board_->uncovered_safe(v.first, board_->field()->nearby_mines_nr(v.first));
 	    lp->set_column_fixed_bound(v.second, 0);
-	    poi_.push_back(v.first);
-	    //result_handler_(feedback::kSolved, v.first);
-	    
+            add_poi(v.first);
+            
 	} else {
 	    lp->set_minimize();
 	    lp->solve();
@@ -202,14 +59,13 @@ bool GlpkSolver::do_poi(miner::Location poi) {
 			 << "\nobj=" << obj
 			 << "\npoi=" << poi
 			 << "\nLP: " << lp->dump() << "\n";
-		    board_->dump_region(poi, kRange);
+		    board_->dump_region(poi, 3);
 		    return false;
 		}
 		
 		board_->mark_mine(v.first, true);
 		lp->set_column_fixed_bound(v.second, 1);
-		poi_.push_back(v.first);
-		//result_handler_(feedback::kSolved, v.first);
+                add_poi(v.first);
 	    }
 	}
 	

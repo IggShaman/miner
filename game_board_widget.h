@@ -49,12 +49,12 @@ protected:
 private:
     void paint_cell(QPainter&, Location);
     void paint_point_cell(QPainter&, Location);
-    size_t x2col(size_t x) { return x / get_scale_factor() / kCellSize; }
-    size_t y2row(size_t y) { return y / get_scale_factor() / kCellSize; }
-    size_t row2y(size_t row) { return get_scale_factor() * row * kCellSize; }
-    size_t col2x(size_t col) { return get_scale_factor() * col * kCellSize; }
+    size_t x2col(size_t x) { return is_point_mode() ? 1 : x / get_scale_factor() / kCellSize; }
+    size_t y2row(size_t y) { return is_point_mode() ? 1 : y / get_scale_factor() / kCellSize; }
+    size_t row2y(size_t row) { return is_point_mode() ? 1 : get_scale_factor() * row * kCellSize; }
+    size_t col2x(size_t col) { return is_point_mode() ? 1 : get_scale_factor() * col * kCellSize; }
     float get_scale_factor() const { return scale_step_ * kScaleStep; }
-    size_t scaled_cell_size() const { return get_scale_factor() * kCellSize; }
+    size_t scaled_cell_size() const;
     void update_widget_size();
     
     GameBoardPtr board_;

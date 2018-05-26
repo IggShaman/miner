@@ -33,7 +33,7 @@ public:
     size_t mines_marked() const { return mines_marked_; }
     FieldCPtr field() const { return field_; }
     CellNeighborhoodIterator neighborhood(Location);
-    bool is_ok(Location l) const { return static_cast<int>(at(l)) >= 0; }
+    bool is_uncovered(Location l) const { return static_cast<int>(at(l)) >= 0; }
     bool game_lost() const { return game_lost_; }
     void set_game_lost() { game_lost_ = true; }
     size_t uncovered_nr() const { return uncovered_nr_; }

@@ -24,7 +24,8 @@ private slots:
     void cell_changed(miner::Location);
     void game_lost();
     void solver_result_slot(
-      miner::GlpkSolver::feedback, miner::Location center, int range);
+      miner::Solver::FeedbackState, miner::Location center, size_t range);
+    
 private:
     void update_cell_info();
     
@@ -38,7 +39,7 @@ private:
     
     QAction* run_solver_action_{};
     QAction* show_mines_action_{};
-    QLabel* mines_info_label_;
+    QLabel* mines_info_label_{};
 };
 
 } // namespace miner

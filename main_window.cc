@@ -87,13 +87,13 @@ void MainWindow::gen_new() {
     game_board_widget_->set_board(board);
     
     solver_.reset(new GlpkSolver{board});
-    solver_->set_result_handler([this](auto ft, miner::Location l, int range){
+    solver_->set_result_handler([this](auto ft, miner::Location l, size_t range){
 	    //QThread::usleep(0); // slow down a bit for nice animation effect
 	    QMetaObject::invokeMethod(
               this, "solver_result_slot", Qt::QueuedConnection,
-              Q_ARG(miner::GlpkSolver::feedback, ft),
+              Q_ARG(miner::Solver::FeedbackState, ft),
               Q_ARG(miner::Location, l),
-              Q_ARG(int, range));
+              Q_ARG(size_t, range));
 	});
     solver_->start_async();
     
@@ -172,19 +172,22 @@ void MainWindow::game_lost() {
 }
 
 
-void MainWindow::solver_result_slot(GlpkSolver::feedback ft, miner::Location l, int range ) {
-    switch(ft) {
-    case GlpkSolver::feedback::kSolved:
+void MainWindow::solver_result_slot(
+  Solver::FeedbackState feedback_state,
+  miner::Location l, size_t range) {
+    
+    switch(feedback_state) {
+    case Solver::FeedbackState::kSolved:
 	game_board_widget_->update_box(l, range);
 	update_cell_info();
 	break;
 	
-    case GlpkSolver::feedback::kSuspended:
+    case Solver::FeedbackState::kSuspended:
 	game_board_widget_->set_rw(true);
 	run_solver_action_->setChecked(false);
 	break;
 	
-    case GlpkSolver::feedback::kGameLost:
+    case Solver::FeedbackState::kGameLost:
 	run_solver_action_->setChecked(false);
 	game_lost();
 	break;

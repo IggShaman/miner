@@ -19,8 +19,9 @@
 
 int main(int argc, char** argv) {
     QApplication q{argc, argv};
-    qRegisterMetaType<miner::GlpkSolver::feedback>("miner::GlpkSolver::feedback");
+    qRegisterMetaType<miner::Solver::FeedbackState>("miner::Solver::FeedbackState");
     qRegisterMetaType<miner::Location>("miner::Location");
+    qRegisterMetaType<size_t>("size_t");
     miner::MainWindow mw;
     mw.show();
     return q.exec();

@@ -3,6 +3,11 @@
 
 namespace i {
 
+inline size_t subtract_floor_0(size_t a, size_t b) {
+    return a > b ? a - b : 0;
+}
+
+
 inline const char* strip_path ( const char* s ) {
     auto rv = rindex(s, '/');
     return !rv ? s : rv + 1;

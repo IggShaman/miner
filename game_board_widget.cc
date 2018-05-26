@@ -247,22 +247,29 @@ void GameBoardWidget::mouseReleaseEvent(QMouseEvent* ev) {
 
 
 void GameBoardWidget::update_cell(Location l) {
-    if (is_point_mode())
+    if (is_point_mode()) {
 	update(l.col, l.row, 1, 1);
-    else
-	update(col2x(l.col), row2y(l.row),
-               scaled_cell_size(), scaled_cell_size());
+        
+    } else {
+	update(
+          col2x(l.col), row2y(l.row),
+          scaled_cell_size(), scaled_cell_size());
+    }
 }
 
 
 void GameBoardWidget::update_box(Location center, size_t range) {
     if (is_point_mode()) {
-	update(center.col - range, center.row - range, 1 + range * 2, 1 + range * 2);
+	update(
+          i::subtract_floor_0(center.col, range),
+          i::subtract_floor_0(center.row, range),
+          1 + range * 2,
+          1 + range * 2);
 	
     } else {
 	update(
-          col2x(center.col - range),
-          row2y(center.row - range),
+          col2x(i::subtract_floor_0(center.col, range)),
+          row2y(i::subtract_floor_0(center.row, range)),
           (1 + range * 2) * scaled_cell_size(),
           (1 + range * 2) * scaled_cell_size());
     }
@@ -295,6 +302,11 @@ void GameBoardWidget::zoom_in() {
 
 void GameBoardWidget::switch_point_mode(bool v) {
     set_scale_step(v ? kPointModeScaleStep : prev_scale_step_);
+}
+
+
+size_t GameBoardWidget::scaled_cell_size() const {
+    return is_point_mode() ? 1 : get_scale_factor() * kCellSize;
 }
 
 } // namespace miner
