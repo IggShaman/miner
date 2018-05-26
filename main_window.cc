@@ -44,6 +44,7 @@ MainWindow::MainWindow() : ui_{new Ui::MainWindow} {
     ui_->toolBar->addAction(a);
     
     run_solver_action_ = a = new QAction("&Solve", this);
+    a->setShortcuts({Qt::Key_Space});
     a->setStatusTip("Solve");
     a->setCheckable(true);
     connect(a, SIGNAL(toggled(bool)), SLOT(run_solver(bool)));
@@ -63,8 +64,9 @@ MainWindow::MainWindow() : ui_{new Ui::MainWindow} {
     
     a = new QAction("Point mode", this);
     a->setStatusTip("Set point mode");
-    a->setShortcuts({Qt::CTRL + Qt::Key_0});
-    connect(a, SIGNAL(triggered()), game_board_widget_, SLOT(set_point_mode()));
+    a->setShortcuts({Qt::CTRL + Qt::Key_0, Qt::Key_P});
+    connect(a, SIGNAL(triggered(bool)), game_board_widget_, SLOT(switch_point_mode(bool)));
+    a->setCheckable(true);
     ui_->toolBar->addAction(a);
     
     mines_info_label_ = new QLabel();

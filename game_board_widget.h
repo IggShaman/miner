@@ -33,7 +33,8 @@ public:
 public slots:
     void zoom_in();
     void zoom_out();
-    void set_point_mode(); // sets minimal zoom, which uses individual pixes to draw field
+    // Sets minimal zoom, which uses individual pixes to draw field
+    void switch_point_mode(bool);
     
 signals:
     void cell_changed(miner::Location);
@@ -67,6 +68,7 @@ private:
     QColor per_nr_colors_text_[8];
     QColor per_nr_colors_box_[8];
     size_t scale_step_ = 20;
+    size_t prev_scale_step_ = 20; // go back to this when toggling scale mode
 };
 
 } // namespace miner

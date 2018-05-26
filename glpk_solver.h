@@ -16,6 +16,8 @@ class GlpkSolver {
     };
     
 public:
+    static constexpr float kEpsilon = 1e-3;
+    
     explicit GlpkSolver(GameBoardPtr board)
         : state_{state::kNew}, board_{board} {}
     ~GlpkSolver();

@@ -11,8 +11,12 @@ GlpkSolver::~GlpkSolver() {
 
 
 void GlpkSolver::start_async() {
-    I_ASSERT(state_ == state::kNew, EX_LOG("state==" << static_cast<int>(state_.load()) << " != kNew"));
-    I_ASSERT(!thread_.joinable(), EX_LOG("thread is joinable"));
+    I_ASSERT(
+      state_ == state::kNew,
+      EX_LOG("state==" << static_cast<int>(state_.load()) << " != kNew"));
+    I_ASSERT(
+      !thread_.joinable(),
+      EX_LOG("thread is joinable"));
     
     state_ = state::kSuspended;
     thread_ = std::thread(&GlpkSolver::async_solver, this);
@@ -132,13 +136,13 @@ struct lp_row_info {
 
 void GlpkSolver::async_solver() {
     while(ok_to_run()) {
-	if ( poi_.empty() ) {
+	if (poi_.empty()) {
 	    state_ = state::kSuspended;
 	    result_handler_(feedback::kSuspended, Location{}, 0);
 	    continue;
 	}
 	
-	if ( !do_poi(poi_.front()) ) {
+	if (!do_poi(poi_.front())) {
 	    poi_.pop_front();
 	    state_ = state::kExit;
 	    return;
@@ -151,17 +155,18 @@ void GlpkSolver::async_solver() {
 
 
 bool GlpkSolver::do_poi(miner::Location poi) {
-    if ( board_->is_ok(poi) ) {
+    if (board_->is_ok(poi)) {
 	auto poi_u = get_unknowns(poi);
-	if ( !poi_u.nr )
+	if (!poi_u.nr)
 	    return true;
     }
     
-    std::unique_ptr<lp::problem> lp(new lp::problem);
-    // a set of coords current LP is looking at; maps coord to LP's column variable number
+    auto lp = std::make_unique<lp::problem>();
+    
+    // a set of locations LP is looking at; maps coord to LP's column variable number
     vars_map_type vars;
     prepare(lp.get(), poi, vars);
-    if ( vars.empty() )
+    if (vars.empty())
 	return true;
     
     for(auto& v: vars) {
@@ -170,9 +175,9 @@ bool GlpkSolver::do_poi(miner::Location poi) {
 	lp->solve();
 	
 	auto obj = lp->get_objective_value();
-	if ( obj < 1e-10 ) {
+	if (obj <= 1 - kEpsilon) {
 	    // can't have a mine here
-	    if ( board_->field()->is_mined(v.first) ) {
+	    if (board_->field()->is_mined(v.first)) {
 		xlog << "ERROR: game is lost at " << v.first << ": shold've been empty, has a mine"
 		     << "\nobj=" << obj
 		     << "\npoi=" << poi
@@ -191,8 +196,8 @@ bool GlpkSolver::do_poi(miner::Location poi) {
 	    lp->set_minimize();
 	    lp->solve();
 	    auto obj = lp->get_objective_value();
-	    if ( obj >= 0.1 ) { // must have a mine here
-		if ( !board_->field()->is_mined(v.first) ) {
+	    if (obj >= kEpsilon) { // must have a mine here
+		if (!board_->field()->is_mined(v.first)) {
 		    xlog << "ERROR: calculated " << v.first << " to contain a mine, but it doesn't"
 			 << "\nobj=" << obj
 			 << "\npoi=" << poi
@@ -236,11 +241,11 @@ void GlpkSolver::prepare(lp::problem* lp, Location poi, vars_map_type& vars) {
             
 	    Location l{row, col};
 	    auto ci = board_->at(l);
-	    if ( static_cast<int>(ci) < 0 )
+	    if (static_cast<int>(ci) < 0)
 		continue;
 	    
 	    auto u = get_unknowns(l);
-	    if ( !u.nr )
+	    if (!u.nr)
 		continue;
 	    
 	    oss.str("");
@@ -250,7 +255,7 @@ void GlpkSolver::prepare(lp::problem* lp, Location poi, vars_map_type& vars) {
 	    for(uint8_t i = 0; i < u.nr; ++i) {
 		// find/add column variable for an uncovered cell
 		auto iv = vars.insert({u.coords[i], vars_nr + 1});
-		if ( iv.second )
+		if (iv.second)
 		    ++vars_nr;
 		
 		// set coefficient to 1
@@ -259,7 +264,7 @@ void GlpkSolver::prepare(lp::problem* lp, Location poi, vars_map_type& vars) {
 	}
     }
     
-    if ( !vars_nr )
+    if (!vars_nr)
 	return;
     
     //
@@ -286,7 +291,7 @@ void GlpkSolver::prepare(lp::problem* lp, Location poi, vars_map_type& vars) {
     
     //std::cout << lp->dump() << "\n";
     //I_ASSERT(lp->presolve(), EX_LOG("could not presolve LP"));
-    if ( !lp->presolve() ) {
+    if (!lp->presolve()) {
 	errlog << "ERROR: could not presolve: " << lp->last_errmsg()
 	       << "\npoi=" << poi
 	       << "\nLP: " << lp->dump() << "\n";

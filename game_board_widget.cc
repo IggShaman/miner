@@ -43,6 +43,7 @@ void GameBoardWidget::set_scale_step(size_t s) {
     }
     
     if (scale_step_ != s) {
+        prev_scale_step_ = scale_step_;
         scale_step_ = s;
         update_widget_size();
     }
@@ -292,8 +293,8 @@ void GameBoardWidget::zoom_in() {
 }
 
 
-void GameBoardWidget::set_point_mode() {
-    set_scale_step(kPointModeScaleStep);
+void GameBoardWidget::switch_point_mode(bool v) {
+    set_scale_step(v ? kPointModeScaleStep : prev_scale_step_);
 }
 
 } // namespace miner
