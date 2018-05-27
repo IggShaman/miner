@@ -1,4 +1,4 @@
-#include "lp_problem.h"
+#include "glpk_lp_problem.h"
 
 namespace lp {
 
@@ -47,42 +47,46 @@ problem::~problem() {
 }
 
 
-void problem::set_matrix ( const matrix& m ) {
-    glp_load_matrix(glp_, m.get_columns().size() - 1, m.get_rows().data(), m.get_columns().data(), m.get_values().data());
+void problem::set_matrix(const matrix& m) {
+    glp_load_matrix(
+      glp_,
+      m.get_columns().size() - 1,
+      m.get_rows().data(),
+      m.get_columns().data(),
+      m.get_values().data());
 }
 
 
 void problem::dump_solution() {
-    xlog << std::fixed << "objective: " << get_objective_value() << "\n";
-    for ( int i = 1; i <= get_num_columns(); ++i )
-	xlog << "  x[" << i << "]=" << get_column_primal(i) << "\n";
+    xlog << std::fixed << "objective: " << get_objective_value();
+    for (int i = 1; i <= get_num_columns(); ++i)
+	xlog << "  x[" << i << "]=" << get_column_primal(i);
 }
 
 
-std::string problem::dump() { //TODO
+std::string problem::dump() {
     std::ostringstream oss;
     oss << (GLP_MIN == glp_get_obj_dir(glp_) ? "min" : "max")
-	<< "[";
-    
+        << "[";
     int cols = glp_get_num_cols(glp_);
-    for ( int i = 1; i <= cols; ++i ) {
+    for (int i = 1; i <= cols; ++i) {
 	oss << glp_get_obj_coef(glp_, i) << '*' << glp_get_col_name(glp_, i);
-	if ( i < cols )
+	if (i < cols)
 	    oss << " + ";
     }
     oss << "]\n";
     
     int rows = glp_get_num_rows(glp_);
-    for ( int r = 1; r <= rows; ++r ) {
+    for (int r = 1; r <= rows; ++r) {
 	std::ostringstream rss;
 	
 	{
 	    int ind[1 + get_num_columns()];
 	    double val[1 + get_num_columns()];
 	    int nr = glp_get_mat_row(glp_, r, ind, val);
-	    for ( int i = 1; i <= nr; ++i ) {
+	    for (int i = 1; i <= nr; ++i) {
 		rss << val[i] << '*' << glp_get_col_name(glp_, ind[i]);
-		if ( i < nr )
+		if (i < nr)
 		    rss << " + ";
 	    }
 	}
@@ -103,7 +107,8 @@ std::string problem::dump() { //TODO
 	    break;
 	    
 	case GLP_DB:
-	    oss << glp_get_row_lb(glp_, r) << " <= " << rss.str() << " <= " << glp_get_row_ub(glp_, r) << "\n";
+	    oss << glp_get_row_lb(glp_, r) << " <= " << rss.str() << " <= "
+                << glp_get_row_ub(glp_, r) << "\n";
 	    break;
 	    
 	case GLP_FX:

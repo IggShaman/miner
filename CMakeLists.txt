@@ -24,12 +24,11 @@ SET(MINER_CXX_FILES
   game_board_widget.cc
   main_window.cc
   util.cc
-  lp_problem.cc
   main.cc
 )
 
 IF (${ENABLE_GLPK_SOLVER})
-  LIST(APPEND MINER_CXX_FILES glpk_solver.cc)
+  LIST(APPEND MINER_CXX_FILES glpk_solver.cc glpk_lp_problem.cc)
   add_definitions(-DENABLE_GLPK_SOLVER)
 ENDIF()
 

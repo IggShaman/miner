@@ -1,4 +1,4 @@
-#include "lp_problem.h"
+#include "glpk_lp_problem.h"
 #include "glpk_solver.h"
 
 namespace miner {
