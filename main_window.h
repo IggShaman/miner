@@ -1,7 +1,7 @@
 #pragma once
 
 #include "field.h"
-#include "glpk_solver.h"
+#include "solver.h"
 
 namespace Ui { class MainWindow; }
 
@@ -28,10 +28,11 @@ private slots:
     
 private:
     void update_cell_info();
+    void setup_solver();
     
     std::unique_ptr<Ui::MainWindow> ui_;
     GameBoardWidget* game_board_widget_{};
-    std::unique_ptr<GlpkSolver> solver_{};
+    std::unique_ptr<Solver> solver_{};
     
     size_t new_rows_{3};
     size_t new_cols_{3};

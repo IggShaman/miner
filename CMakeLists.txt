@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.10)
 SET(CMAKE_CXX_STANDARD 14)
 project(MINER)
 
+OPTION(ENABLE_GLPK_SOLVER "Build glpk-based solver" OFF)
+OPTION(ENABLE_SOPLEX_SOLVER "Build soplex-based solver" OFF)
+
 include_directories(${MINER_SOURCE_DIR})
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W -Wall -Wextra -fPIC")
@@ -16,7 +19,6 @@ include(${MINER_SOURCE_DIR}/cmake/pch.cmake)
 
 SET(MINER_CXX_FILES
   solver.cc
-  glpk_solver.cc
   field.cc
   board.cc
   game_board_widget.cc
@@ -25,6 +27,11 @@ SET(MINER_CXX_FILES
   lp_problem.cc
   main.cc
 )
+
+IF (${ENABLE_GLPK_SOLVER})
+  LIST(APPEND MINER_CXX_FILES glpk_solver.cc)
+  add_definitions(-DENABLE_GLPK_SOLVER)
+ENDIF()
 
 SET(MINER_UI_FORMS
   main_window.ui

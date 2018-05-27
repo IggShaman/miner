@@ -1,9 +1,12 @@
 #include "board.h"
-#include "glpk_solver.h"
 #include "game_board_widget.h"
 #include "main_window.h"
 #include "ui_main_window.h"
 #include "ui_configure_field_dialog.h"
+
+#if ENABLE_GLPK_SOLVER
+#include "glpk_solver.h"
+#endif
 
 namespace miner {
 
@@ -76,16 +79,9 @@ MainWindow::MainWindow() : ui_{new Ui::MainWindow} {
 }
 
 
-void MainWindow::gen_new() {
-    show_mines_action_->setChecked(false);
-    
-    auto field = std::make_shared<Field>();
-    field->gen_random(new_rows_, new_cols_, new_mines_);
-    
-    auto board = std::make_shared<GameBoard>();
-    board->set_field(field);
-    game_board_widget_->set_board(board);
-    
+void MainWindow::setup_solver() {
+#ifdef ENABLE_GLPK_SOLVER
+    auto board = game_board_widget_->board();
     solver_.reset(new GlpkSolver{board});
     solver_->set_result_handler([this](auto ft, miner::Location l, size_t range){
 	    //QThread::usleep(0); // slow down a bit for nice animation effect
@@ -96,9 +92,23 @@ void MainWindow::gen_new() {
               Q_ARG(size_t, range));
 	});
     solver_->start_async();
+#else
+    #error Enable at least one solver
+#endif
+}
+
+
+void MainWindow::gen_new() {
+    show_mines_action_->setChecked(false);
     
+    auto field = std::make_shared<Field>();
+    field->gen_random(new_rows_, new_cols_, new_mines_);
+    
+    auto board = std::make_shared<GameBoard>();
+    board->set_field(field);
+    game_board_widget_->set_board(board);
+    setup_solver();
     update_cell_info();
-    
     game_board_widget_->set_rw(true);
 }
 
