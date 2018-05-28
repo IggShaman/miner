@@ -12,17 +12,17 @@ struct lp_row_info {
 };
 
 
-bool GlpkSolver::do_poi(miner::Location poi) {
+bool GlpkSolver::doPoi(miner::Location poi) {
     if (board_->is_uncovered(poi)) {
-	auto poi_u = get_unknowns(poi);
-	if (!poi_u.nr)
+	auto pois = getNeighborhoodInfo(poi);
+	if (!pois.nr)
 	    return true;
     }
     
     auto lp = std::make_unique<lp::problem>();
     
     // a set of locations LP is looking at; maps coord to LP's column variable number
-    vars_map_type vars;
+    VariablesMapType vars;
     prepare(lp.get(), poi, vars);
     if (vars.empty())
 	return true;
@@ -41,13 +41,13 @@ bool GlpkSolver::do_poi(miner::Location poi) {
 		     << "\npoi=" << poi
 		     << "\nLP: " << lp->dump() << "\n";
 		board_->dump_region(poi, 3);
-		result_handler_(FeedbackState::kGameLost, Location{}, 0);
+		resultHandler_(FeedbackState::kGameLost, Location{}, 0);
 		return false;
 	    }
 	    
 	    board_->uncovered_safe(v.first, board_->field()->nearby_mines_nr(v.first));
 	    lp->set_column_fixed_bound(v.second, 0);
-            add_poi(v.first);
+            addPoi(v.first);
             
 	} else {
 	    lp->set_minimize();
@@ -65,7 +65,7 @@ bool GlpkSolver::do_poi(miner::Location poi) {
 		
 		board_->mark_mine(v.first, true);
 		lp->set_column_fixed_bound(v.second, 1);
-                add_poi(v.first);
+                addPoi(v.first);
 	    }
 	}
 	
@@ -76,7 +76,7 @@ bool GlpkSolver::do_poi(miner::Location poi) {
 }
 
 
-void GlpkSolver::prepare(lp::problem* lp, Location poi, vars_map_type& vars) {
+void GlpkSolver::prepare(lp::problem* lp, Location poi, VariablesMapType& vars) {
     std::ostringstream oss;
     
     int vars_nr{};
@@ -100,17 +100,17 @@ void GlpkSolver::prepare(lp::problem* lp, Location poi, vars_map_type& vars) {
 	    if (static_cast<int>(ci) < 0)
 		continue;
 	    
-	    auto u = get_unknowns(l);
-	    if (!u.nr)
+	    auto pois = getNeighborhoodInfo(l);
+	    if (!pois.nr)
 		continue;
 	    
 	    oss.str("");
 	    oss << 'n' << l;
-	    rows.push_back({u.mines_nr, oss.str()});
+	    rows.push_back({pois.mines_nr, oss.str()});
 	    
-	    for(uint8_t i = 0; i < u.nr; ++i) {
+	    for(uint8_t i = 0; i < pois.nr; ++i) {
 		// find/add column variable for an uncovered cell
-		auto iv = vars.insert({u.coords[i], vars_nr + 1});
+		auto iv = vars.insert({pois.coveredUnmarkedLocations[i], vars_nr + 1});
 		if (iv.second)
 		    ++vars_nr;
 		
@@ -145,8 +145,6 @@ void GlpkSolver::prepare(lp::problem* lp, Location poi, vars_map_type& vars) {
     
     lp->set_matrix(m);
     
-    //std::cout << lp->dump() << "\n";
-    //I_ASSERT(lp->presolve(), EX_LOG("could not presolve LP"));
     if (!lp->presolve()) {
 	errlog << "ERROR: could not presolve: " << lp->last_errmsg()
 	       << "\npoi=" << poi

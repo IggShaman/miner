@@ -21,35 +21,35 @@ public:
 	kGameLost
     };
     
-    using result_handler = std::function<void(FeedbackState,Location,size_t)>;
+    using ResultHandler = std::function<void(FeedbackState,Location,size_t)>;
     
     explicit Solver(GameBoardPtr board) : board_{board} {}
     virtual ~Solver();
     
-    bool is_running() const;
-    void start_async();
+    bool isRunning() const;
+    void startAsync();
     void suspend();
     void resume();
     void stop();
-    void add_poi(Location);
-    void set_result_handler(result_handler h) { result_handler_ = h; }
+    void addPoi(Location);
+    void setResultHandler(ResultHandler h) { resultHandler_ = h; }
     
 protected:
-    virtual bool do_poi(miner::Location) = 0;
+    virtual bool doPoi(miner::Location) = 0;
     
-    struct unknown_neighbors {
-        uint8_t nr{};                   // number of neighbors, in "coords" array
-        uint8_t mines_nr{};             // number of mines left
-        std::array<Location, 8> coords; // covered unmarked cells
+    struct NeighborhoodInfo {
+        uint8_t mines_nr{}; // number of mines left around current cell
+        uint8_t nr{};       // size of "coveredUnmarkedLocations" array
+        std::array<Location, 8> coveredUnmarkedLocations;
     };
-    unknown_neighbors get_unknowns(Location) const;
+    NeighborhoodInfo getNeighborhoodInfo(Location) const;
     
     GameBoardPtr board_;
-    result_handler result_handler_;
+    ResultHandler resultHandler_;
     
 private:
-    bool ok_to_run();
-    void async_solver();
+    bool okToRun();
+    void asyncSolver();
     
     std::atomic<RunState> state_{RunState::kNew};
 

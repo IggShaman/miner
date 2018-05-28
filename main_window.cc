@@ -83,7 +83,7 @@ void MainWindow::setup_solver() {
 #ifdef ENABLE_GLPK_SOLVER
     auto board = game_board_widget_->board();
     solver_.reset(new GlpkSolver{board});
-    solver_->set_result_handler([this](auto ft, miner::Location l, size_t range){
+    solver_->setResultHandler([this](auto ft, miner::Location l, size_t range){
 	    //QThread::usleep(0); // slow down a bit for nice animation effect
 	    QMetaObject::invokeMethod(
               this, "solver_result_slot", Qt::QueuedConnection,
@@ -91,7 +91,7 @@ void MainWindow::setup_solver() {
               Q_ARG(miner::Location, l),
               Q_ARG(size_t, range));
 	});
-    solver_->start_async();
+    solver_->startAsync();
 #else
     #error Enable at least one solver
 #endif
@@ -161,7 +161,7 @@ void MainWindow::action_about() {
 
 
 void MainWindow::cell_changed(miner::Location l) {
-    solver_->add_poi(l);
+    solver_->addPoi(l);
     update_cell_info();
 }
 

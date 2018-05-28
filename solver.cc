@@ -8,7 +8,7 @@ Solver::~Solver() {
 	thread_.join();
 }
 
-void Solver::start_async() {
+void Solver::startAsync() {
     I_ASSERT(
       state_ == RunState::kNew,
       EX_LOG("state==" << static_cast<int>(state_.load()) << " != kNew"));
@@ -17,22 +17,22 @@ void Solver::start_async() {
       EX_LOG("thread is joinable"));
     
     state_ = RunState::kSuspended;
-    thread_ = std::thread(&Solver::async_solver, this);
+    thread_ = std::thread(&Solver::asyncSolver, this);
 }
 
 
-bool Solver::is_running() const {
+bool Solver::isRunning() const {
     return RunState::kRunning == state_
         or RunState::kSuspending == state_;
 }
 
 
-bool Solver::ok_to_run() {
+bool Solver::okToRun() {
     while(true) {
 	switch(state_) {
 	case RunState::kNew:
 	case RunState::kSuspended: {
-	    std::unique_lock<std::mutex> lck(mtx_);
+	    std::unique_lock<std::mutex> lck{mtx_};
 	    cond_.wait(lck);
 	    break;
 	}
@@ -74,14 +74,14 @@ void Solver::stop() {
 }
 
 
-void Solver::add_poi(Location l) {
+void Solver::addPoi(Location l) {
     std::lock_guard<std::mutex> lock{queue_mtx_};
     poi_.push_back(l);
 }
 
 
-Solver::unknown_neighbors Solver::get_unknowns(Location l) const {
-    unknown_neighbors rv;
+Solver::NeighborhoodInfo Solver::getNeighborhoodInfo(Location l) const {
+    NeighborhoodInfo rv;
     
     auto ci = board_->at(l);
     switch(ci) {
@@ -114,7 +114,7 @@ Solver::unknown_neighbors Solver::get_unknowns(Location l) const {
                 break;
                 
 	    case GameBoard::CellInfo::Unknown:
-		rv.coords[rv.nr++] = *it;
+		rv.coveredUnmarkedLocations[rv.nr++] = *it;
 		break;
                 
 	    default:
@@ -129,8 +129,8 @@ Solver::unknown_neighbors Solver::get_unknowns(Location l) const {
 }
 
 
-void Solver::async_solver() {
-    while(ok_to_run()) {
+void Solver::asyncSolver() {
+    while(okToRun()) {
         Location poi;
         
         {
@@ -138,7 +138,7 @@ void Solver::async_solver() {
             if (poi_.empty()) {
                 lock.unlock();
                 state_ = RunState::kSuspended;
-                result_handler_(FeedbackState::kSuspended, Location{}, 0);
+                resultHandler_(FeedbackState::kSuspended, Location{}, 0);
                 continue;
             }
 
@@ -146,12 +146,12 @@ void Solver::async_solver() {
             poi_.pop_front();
         }
         
-	if (!do_poi(poi)) {
+	if (!doPoi(poi)) {
 	    state_ = RunState::kExit;
 	    return;
 	}
 	
-	result_handler_(FeedbackState::kSolved, poi, kUpdateRange);
+	resultHandler_(FeedbackState::kSolved, poi, kUpdateRange);
     }
 }
 

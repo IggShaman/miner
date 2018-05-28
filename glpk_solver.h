@@ -14,9 +14,11 @@ public:
     using Solver::Solver;
     
 private:
-    using vars_map_type = std::unordered_map<Location, int>;
-    void prepare(lp::problem*, miner::Location, vars_map_type&);
-    bool do_poi(miner::Location) override;
+    // maps location to variable id in an LP
+    using VariablesMapType = std::unordered_map<Location, int>;
+    
+    void prepare(lp::problem*, miner::Location, VariablesMapType&);
+    bool doPoi(miner::Location) override;
 };
 
 } // namespace miner
