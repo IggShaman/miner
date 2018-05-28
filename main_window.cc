@@ -8,6 +8,10 @@
 #include "glpk_solver.h"
 #endif
 
+#if ENABLE_SOPLEX_SOLVER
+#include "soplex_solver.h"
+#endif
+
 namespace miner {
 
 MainWindow::~MainWindow() {
@@ -80,9 +84,17 @@ MainWindow::MainWindow() : ui_{new Ui::MainWindow} {
 
 
 void MainWindow::setup_solver() {
-#ifdef ENABLE_GLPK_SOLVER
     auto board = game_board_widget_->board();
+    
+#ifdef ENABLE_SOPLEX_SOLVER
+    solver_.reset(new SoplexSolver{board});
+    
+#elif ENABLE_GLPK_SOLVER
     solver_.reset(new GlpkSolver{board});
+#else
+    #error Enable at least one solver
+#endif
+    
     solver_->setResultHandler([this](auto ft, miner::Location l, size_t range){
 	    //QThread::usleep(0); // slow down a bit for nice animation effect
 	    QMetaObject::invokeMethod(
@@ -92,9 +104,6 @@ void MainWindow::setup_solver() {
               Q_ARG(size_t, range));
 	});
     solver_->startAsync();
-#else
-    #error Enable at least one solver
-#endif
 }
 
 

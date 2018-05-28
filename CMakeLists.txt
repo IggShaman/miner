@@ -4,6 +4,7 @@ project(MINER)
 
 OPTION(ENABLE_GLPK_SOLVER "Build glpk-based solver" OFF)
 OPTION(ENABLE_SOPLEX_SOLVER "Build soplex-based solver" OFF)
+SET(SOPLEX_PATH "/usr/local/soplex" CACHE STRING "Path to SOPLEX installation")
 
 include_directories(${MINER_SOURCE_DIR})
 
@@ -32,6 +33,14 @@ IF (${ENABLE_GLPK_SOLVER})
   add_definitions(-DENABLE_GLPK_SOLVER)
 ENDIF()
 
+IF (${ENABLE_SOPLEX_SOLVER})
+  LIST(APPEND MINER_CXX_FILES soplex_solver.cc)
+  add_definitions(-DENABLE_SOPLEX_SOLVER)
+  include(${SOPLEX_PATH}/lib/cmake/soplex/soplex-config.cmake)
+
+  include_directories(${SOPLEX_INCLUDE_DIRS})
+ENDIF()
+
 SET(MINER_UI_FORMS
   main_window.ui
   configure_field_dialog.ui
@@ -50,5 +59,13 @@ include_directories(${CMAKE_BINARY_DIR})
 
 create_precompiled_header(stable stable.h)
 add_executable(miner ${MINER_CXX_FILES} ${MINER_UIS_H} ${MINER_MOC_SRCS} ${MINER_RC_SRCS})
-target_link_libraries(miner glpk ${Qt5Core_LIBRARIES} ${Qt5Widgets_LIBRARIES} -lpthread)
+target_link_libraries(miner ${Qt5Core_LIBRARIES} ${Qt5Widgets_LIBRARIES} -lpthread)
 use_precompiled_header(miner stable)
+
+IF (${ENABLE_GLPK_SOLVER})
+  target_link_libraries(miner glpk)
+ENDIF()
+
+IF (${ENABLE_SOPLEX_SOLVER})
+  target_link_libraries(miner ${SOPLEX_LIBRARIES})
+ENDIF()
